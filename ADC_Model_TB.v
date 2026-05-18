@@ -72,7 +72,7 @@ module adc_stream_gen #(
     end
 
     // -------------------- sequential: register outputs --------------------
-    always @(negedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             frame_cyc <= 0;
             sync      <= 1'b0;
@@ -124,7 +124,7 @@ module adc_rx #(
             amp_out[k_init] = 0;
     end
 
-    always @(posedge clk or negedge rst_n) begin
+    always @(negedge clk or negedge rst_n) begin
         if (!rst_n) begin
             cyc_in_group <= 0;
             group_idx    <= 0;
