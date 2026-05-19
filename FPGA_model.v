@@ -19,7 +19,7 @@ module adc_rx #(
     integer frame_cyc, group_idx, cyc_in_group;
     integer bit_idx, which_adc, which_bit, amp_index;
 
-    always @(posedge clk or negedge rst_n) begin
+    always @(negedge clk or negedge rst_n) begin
         if (!rst_n) begin
             frame_cyc  <= 0;
             frame_done <= 1'b0;
