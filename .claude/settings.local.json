@@ -5,7 +5,17 @@
       "Bash(git init:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(gh repo:*)"
+      "Bash(gh repo:*)",
+      "Bash(grep -E \"\\\\.\\(xdc|pcf|lpf|sdc|tcl|json|md|txt|cfg\\)$\")",
+      "Bash(pdftotext FPGA-EB-02017-1-3-ECP5-Evaluation-Board.pdf -)",
+      "Bash(python3 -c \"import pdfminer\")",
+      "Bash(python3 -c \"import pypdf\")",
+      "Bash(python3 -c \"import fitz\")",
+      "Bash(brew list:*)",
+      "Bash(mdls FPGA-EB-02017-1-3-ECP5-Evaluation-Board.pdf)",
+      "Bash(brew install:*)",
+      "Bash(pdftotext /Users/banjo/Documents/COMP/RISE/FPGA_512/FPGA-EB-02017-1-3-ECP5-Evaluation-Board.pdf -)",
+      "Bash(grep -A 200 \"Table 5\\\\.2\\\\. Versa J40 Header Pin Connections:*)"
     ]
   }
 }

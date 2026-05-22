@@ -1,0 +1,52 @@
+# =============================================================================
+# ecp5_eval.lpf  —  Lattice ECP5-5G Evaluation Board (LFE5UM5G-85F-8BG381C)
+# Single-channel ADC serial loopback, open-source toolchain (nextpnr-ecp5)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Clock — 12 MHz from FTDI (U1).  JP2 must be installed, USB cable connected.
+# -----------------------------------------------------------------------------
+LOCATE COMP "clk_12m" SITE "A10";
+IOBUF PORT "clk_12m" IO_TYPE=LVCMOS33;
+FREQUENCY PORT "clk_12m" 12.0 MHZ;
+
+# -----------------------------------------------------------------------------
+# Reset — SW4 (active-low push button)
+# -----------------------------------------------------------------------------
+LOCATE COMP "rst_btn_n" SITE "P4";
+IOBUF PORT "rst_btn_n" IO_TYPE=LVCMOS33;
+
+# -----------------------------------------------------------------------------
+# J39 expansion header — serial data signals
+#
+#   Pin 5  (B15)  serial_out     TX bitstream output   — probe / loopback src
+#   Pin 6  (C15)  serial_in      RX bitstream input    — jumper wire from Pin 5
+#   Pin 7  (B13)  sync_out       frame sync            — probe
+#   Pin 8  (B20)  next_amps_out  group boundary        — probe
+# -----------------------------------------------------------------------------
+LOCATE COMP "serial_out"    SITE "B15";
+LOCATE COMP "serial_in"     SITE "C15";
+LOCATE COMP "sync_out"      SITE "B13";
+LOCATE COMP "next_amps_out" SITE "B20";
+
+IOBUF PORT "serial_out"    IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "serial_in"     IO_TYPE=LVCMOS33;
+IOBUF PORT "sync_out"      IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "next_amps_out" IO_TYPE=LVCMOS33 DRIVE=4;
+
+# -----------------------------------------------------------------------------
+# LEDs — active-low, Bank 1 (LVCMOS33)
+#   led0  A13  blinks when frames complete
+#   led1  A12  error latch (illuminates on watchdog timeout)
+#   led2  B19  TX heartbeat toggle
+#   led3  A18  spare (off)
+# -----------------------------------------------------------------------------
+LOCATE COMP "led0" SITE "A13";
+LOCATE COMP "led1" SITE "A12";
+LOCATE COMP "led2" SITE "B19";
+LOCATE COMP "led3" SITE "A18";
+
+IOBUF PORT "led0" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "led1" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "led2" IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "led3" IO_TYPE=LVCMOS33 DRIVE=4;
