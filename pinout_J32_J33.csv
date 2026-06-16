@@ -1,0 +1,73 @@
+Connector,Pin,Side,Schematic_Signal,ECP5_Ball,Notes
+J32,1,Left,NC,,J32 Pin 1 NC
+J32,2,Right,VCCIO7,,Power
+J32,3,Left,DGND,,GND
+J32,4,Right,DGND,,GND
+J32,5,Left,D<8>,A5,
+J32,6,Right,NC,A4,Unconnected in schematic
+J32,7,Left,DGND,,GND
+J32,8,Right,DGND,,GND
+J32,9,Left,D<7>,C5,
+J32,10,Right,NC,B5,Unconnected in schematic
+J32,11,Left,DGND,,GND
+J32,12,Right,DGND,,GND
+J32,13,Left,D<6>,B4,
+J32,14,Right,NC,C4,Unconnected in schematic
+J32,15,Left,DGND,,GND
+J32,16,Right,DGND,,GND
+J32,17,Left,D<5>,B3,
+J32,18,Right,NC,A3,Unconnected in schematic
+J32,19,Left,DGND,,GND
+J32,20,Right,DGND,,GND
+J32,21,Left,CHIP_RESET,D5,
+J32,22,Right,CLKH,E4,
+J32,23,Left,DGND,,GND
+J32,24,Right,DGND,,GND
+J32,25,Left,D<4>,D3,
+J32,26,Right,NC,C3,Unconnected in schematic
+J32,27,Left,DGND,,GND
+J32,28,Right,DGND,,GND
+J32,29,Left,D<1>,E3,
+J32,30,Right,NC,F4,Unconnected in schematic
+J32,31,Left,DGND,,GND
+J32,32,Right,DGND,,GND
+J32,33,Left,D<2>,F5,
+J32,34,Right,NC,E5,Unconnected in schematic
+J32,35,Left,DGND,,GND
+J32,36,Right,DGND,,GND
+J32,37,Left,D<3>,B1,
+J32,38,Right,NC,A2,Unconnected in schematic
+J32,39,Left,DGND,,GND
+J32,40,Right,DGND,,GND
+J33,1,Left,NC,,J33 Pin 1 NC
+J33,2,Right,VCCIO7,,Power
+J33,3,Left,DGND,,GND
+J33,4,Right,DGND,,GND
+J33,5,Left,AC_IN,C2,
+J33,6,Right,IMP_TEST,B2,
+J33,7,Left,DGND,,GND
+J33,8,Right,DGND,,GND
+J33,9,Left,FE_RESET,D1,
+J33,10,Right,SPI_CLK,C1,
+J33,11,Left,DGND,,GND
+J33,12,Right,DGND,,GND
+J33,13,Left,SPI_LATCH,E1,
+J33,14,Right,CLK32MHZ,D2,
+J33,15,Left,DGND,,GND
+J33,16,Right,DGND,,GND
+J33,17,Left,SPI_DINR,G5,
+J33,18,Right,READ,H4,
+J33,19,Left,DGND,,GND
+J33,20,Right,DGND,,GND
+J33,21,Left,SPI_DINL,H3,
+J33,22,Right,SYNC,H5,
+J33,23,Left,DGND,,GND
+J33,24,Right,DGND,,GND
+J33,25,Left,STIM_EN,F3,
+J33,26,Right,STIM_CHB,G3,
+J33,27,Left,DGND,,GND
+J33,28,Right,DGND,,GND
+J33,29,Left,STIM_START,E2,
+J33,30,Right,STIM_CLK,F2,
+J33,31,Left,DGND,,GND
+J33,32,Right,DGND,,GND

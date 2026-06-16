@@ -1,25 +1,45 @@
 // =============================================================================
-// top.v  —  ECP5-5G Eval Board, single-channel ADC serial loopback test
+// top.v  —  ECP5-5G Eval Board, 8-channel external ADC receiver
 //
 // Physical setup:
-//   Jumper a wire from J39 Pin 5 (B15) -> J39 Pin 6 (C15)
-//   Attach logic analyzer to any probed pins below
+//   Move JP11 from pins 1-2 to pins 2-3 → VCCIO7 = 1.5 V (J32/J33 bank).
+//   Verify LED D23 (+1.5 V indicator) is lit.
+//   Connect external ADC device to J32 and J33.
+//   Connect logic analyzer to J40 (Bank 0, 3.3 V, no jumper change needed).
 //
-// J39 pins used:
-//   Pin 5  (B15)  serial_out     — TX serial bitstream (probe / loopback source)
-//   Pin 6  (C15)  serial_in      — RX serial bitstream (jumper from Pin 5)
-//   Pin 7  (B13)  sync_out       — frame sync pulse     (probe)
-//   Pin 8  (B20)  next_amps_out  — group-boundary pulse (probe)
+// Clock domains:
+//   clk32M        — FPGA PLL output (12→32 MHz). Drives LED/watchdog logic
+//                   and is sent OUT to the device as CLKH (J32 Pin 22 / E4).
+//   j33_clk32mhz  — 32 MHz clock received BACK from the device (J33 Pin 14 / D2).
+//                   Used to clock the RX deserializer so data is decoded
+//                   synchronously to the device's own transmit clock.
+//
+// J32 (Bank 7, 1.5 V):
+//   Pins 5,9,13,17,25,29,33,37 — D[8:1]  8 serial data streams (one per channel)
+//   Pin 21 (D5)  CHIP_RESET  — spare input (pulled up)
+//   Pin 22 (E4)  CLKH        — 32 MHz clock OUTPUT to device
+//
+// J33 (Bank 7, 1.5 V):
+//   Pin 14 (D2)  CLK32MHZ    — 32 MHz clock INPUT from device → RX decode clock
+//   Pin 18 (H4)  READ        — group-boundary pulse (next_amps), broadcast to all 8 ch
+//   Pin 22 (H5)  SYNC        — frame sync, broadcast to all 8 channels
+//   Pins 25,29 (F3,E2) STIM_EN, STIM_START — outputs to device (held low)
+//   Pins 26,30 (G3,F2) STIM_CHB, STIM_CLK  — outputs to device (held low)
+//
+// J40 (Bank 0, 3.3 V) — logic analyzer output:
+//   Pin 1  (K2)  la_clk     — 32 MHz decode clock (passthrough of j33_clk32mhz)
+//   Pin 2        GND         — LA ground clip
+//   Pin 3  (A15) la_data[0] — out_valid[0]: channel pair 0/1 active
+//   Pin 4  (F1)  la_data[1] — out_valid[1]: channel pair 2/3 active
+//   Pin 5  (H2)  la_data[2] — out_valid[2]: channel pair 4/5 active
+//   Pin 6  (G1)  la_data[3] — out_valid[3]: channel pair 6/7 active
 //
 // LEDs (active-low):
-//   LED[0]  A13  — blinks ~1 Hz when frames complete (RX healthy)
-//   LED[1]  A12  — latches ON on watchdog timeout (no frame_done)
-//   LED[2]  B19  — TX heartbeat, toggles every frame sync
+//   LED[0]  A13  — blinks ~1 Hz when output data is flowing (watchdog healthy)
+//   LED[1]  A12  — latches ON if no output data for ~65 ms (RX dead)
+//   LED[2]  B19  — toggles on every incoming SYNC rising edge
 //   LED[3]  A18  — ON when PLL is locked
-//   LED[4]  B18  — spare (off)
-//   LED[5]  C17  — spare (off)
-//   LED[6]  A17  — spare (off)
-//   LED[7]  B17  — spare (off)
+//   LED[4-7]     — spare (off)
 //
 // Reset: rstn — SW4 (P4), active-low
 // =============================================================================
@@ -29,24 +49,43 @@ module top (
     input  wire        rstn,           // SW4 (ball P4), active-low
     output wire  [7:0] LED,            // LEDs D2-D9 (active-low)
 
-    // J39 expansion header
-    output wire        serial_out,     // J39 Pin 5 (B15) — TX bitstream
-    input  wire        serial_in,      // J39 Pin 6 (C15) — RX bitstream (jumper from Pin 5)
-    output wire        sync_out,       // J39 Pin 7 (B13) — frame sync
-    output wire        next_amps_out,  // J39 Pin 8 (B20) — group boundary
-    output wire        clk_div_out     // J39 Pin 9 (D11) — 32 MHz / 1024 ≈ 31 kHz, scope-measurable
+    // J39 Pin 9 (D11) — divided clock for scope verification
+    output wire        clk_div_out,
+
+    // J32 — 8 serial data streams + control (Bank 7, 1.5 V)
+    input  wire [8:1]  j32_d,          // D[8:1]: one serial bitstream per channel
+    input  wire        j32_chip_reset, // spare input
+    output wire        j32_clkh,       // 32 MHz clock OUTPUT to device
+
+    // J33 — control signals (Bank 7, 1.5 V)
+    input  wire        j33_ac_in,
+    input  wire        j33_imp_test,
+    input  wire        j33_fe_reset,
+    input  wire        j33_spi_clk,
+    input  wire        j33_spi_latch,
+    input  wire        j33_clk32mhz,   // 32 MHz clock INPUT from device → decode clock
+    input  wire        j33_spi_dinr,   // spare input
+    input  wire        j33_read,       // group-boundary pulse (next_amps), all channels
+    input  wire        j33_spi_dinl,   // spare input
+    input  wire        j33_sync,       // frame sync, broadcast to all channels
+    output wire        j33_stim_en,
+    output wire        j33_stim_chb,
+    output wire        j33_stim_start,
+    output wire        j33_stim_clk,
+
+    // J40 — logic analyzer output (Bank 0, 3.3 V)
+    output wire        la_clk,         // J40 Pin 1 (K2)  — decode clock for LA
+    output wire [3:0]  la_data         // J40 Pins 3-6    — out_valid[3:0]
 );
 
     wire rst;
     wire clk32M;
     wire pll_locked;
 
-    assign rst = ~rstn;  // active-high internal reset
+    assign rst = ~rstn;
 
     // -------------------------------------------------------------------------
-    // 1. PLL — 12 MHz -> 32 MHz
-    //    CLKOP_DIV=15 puts VCO at 480 MHz (required range: 400-800 MHz).
-    //    Output = 480 / 15 = 32 MHz.
+    // 1. PLL — 12 MHz -> 32 MHz (drives LED/watchdog domain and CLKH output)
     // -------------------------------------------------------------------------
     pll_32mhz pll_inst (
         .clk_in (clk_x1),
@@ -56,139 +95,139 @@ module top (
     );
 
     // -------------------------------------------------------------------------
-    // 2. Reset — synchronous de-assertion, held until PLL locks
+    // 2. Reset — synchronous de-assertion in clk32M domain, held until PLL locks
     // -------------------------------------------------------------------------
     reg [3:0] rst_pipe = 4'hF;
     always @(posedge clk32M) begin
-        if (rst || !pll_locked)
-            rst_pipe <= 4'hF;
-        else
-            rst_pipe <= {rst_pipe[2:0], 1'b0};
+        if (rst || !pll_locked) rst_pipe <= 4'hF;
+        else                    rst_pipe <= {rst_pipe[2:0], 1'b0};
     end
-    wire rst_n = ~rst_pipe[3];  // active-low, clean synchronous release
+    wire rst_n = ~rst_pipe[3];
+
+    // Reset synchronizer for the j33_clk32mhz domain (async assert, sync deassert)
+    reg [3:0] rst_rx_pipe = 4'hF;
+    always @(posedge j33_clk32mhz or negedge rst_n) begin
+        if (!rst_n) rst_rx_pipe <= 4'hF;
+        else        rst_rx_pipe <= {rst_rx_pipe[2:0], 1'b0};
+    end
+    wire rst_rx_n = ~rst_rx_pipe[3];
 
     // -------------------------------------------------------------------------
-    // 3. TX — serial stream generator
+    // 3. Clock outputs
+    //    CLKH (j32_clkh): FPGA PLL 32 MHz → device (device uses this to TX data)
+    //    la_clk          : same device decode clock re-exported for LA reference
     // -------------------------------------------------------------------------
-    wire tx_sync;
-    wire tx_next_amps;
-    wire tx_data;
+    assign j32_clkh = clk32M;
+    assign la_clk   = j33_clk32mhz;
 
-    adc_stream_gen #(
-        .N_AMPS      (64),
-        .N_ADC_PER_GP(4),
-        .ADC_BITS    (12),
-        .ZERO_CYCLES (16),
-        .DATA_CYCLES (48),
-        .GROUP_CYCLES(64),
-        .N_GROUPS    (16),
-        .FRAME_CYCLES(1024),
-        .TEST_ITERS  (3)
-    ) u_tx (
-        .clk      (clk32M),
-        .rst_n    (rst_n),
-        .sync     (tx_sync),
-        .next_amps(tx_next_amps),
-        .data     (tx_data)
+    // -------------------------------------------------------------------------
+    // 4. Stimulation outputs — held low until needed
+    // -------------------------------------------------------------------------
+    assign j33_stim_en    = 1'b0;
+    assign j33_stim_chb   = 1'b0;
+    assign j33_stim_start = 1'b0;
+    assign j33_stim_clk   = 1'b0;
+
+    // -------------------------------------------------------------------------
+    // Unused input anchor — keeps IO buffers in netlist so LPF PULLMODE applies
+    // -------------------------------------------------------------------------
+    wire _unused_ok = &{1'b0,
+        j32_chip_reset,
+        j33_ac_in,
+        j33_imp_test,
+        j33_fe_reset,
+        j33_spi_clk,
+        j33_spi_latch,
+        j33_spi_dinr,
+        j33_spi_dinl
+    };
+
+    // -------------------------------------------------------------------------
+    // 5. RX — 8-channel deserializer + 8:4 TDM mux
+    //
+    //   Clock  : j33_clk32mhz  — device's own transmit clock (decode domain)
+    //   Data   : j32_d[8:1]    — 8 independent serial bitstreams, one per channel
+    //   Sync   : j33_sync      — frame boundary, broadcast to all 8 channels
+    //   Next   : j33_read      — group-boundary (next_amps), broadcast to all 8 ch
+    //
+    //   Output : out_valid[3:0] — one strobe per output lane (pair of channels)
+    //            out_word[0:3]  — 12-bit ADC word per lane when valid
+    //            out_chsel[3:0] — which sub-channel (0=even, 1=odd) is on each lane
+    // -------------------------------------------------------------------------
+    wire [3:0]  out_valid;
+    wire [11:0] out_word [0:3];
+    wire [3:0]  out_chsel;
+
+    rx_process_mux #(
+        .N_CH         (8),
+        .N_ADC_PER_GP (4),
+        .ADC_BITS     (12),
+        .ZERO_CYCLES  (16),
+        .GROUP_CYCLES (64),
+        .N_GROUPS     (16),
+        .SAMPS_PER_FR (64),
+        .RX_FIFO_DEPTH(16),
+        .TX_FIFO_DEPTH(16)
+    ) u_mux (
+        .clk          (j33_clk32mhz),
+        .rst_n        (rst_rx_n),
+        .data_in      (j32_d[8:1]),           // D[8] → ch7 … D[1] → ch0
+        .sync_in      ({8{j33_sync}}),         // shared frame sync → all channels
+        .next_amps_in ({8{j33_read}}),         // shared group boundary → all channels
+        .out_valid    (out_valid),
+        .out_word     (out_word),
+        .out_chsel    (out_chsel)
     );
 
-    assign serial_out    = tx_data;
-    assign sync_out      = tx_sync;
-    assign next_amps_out = tx_next_amps;
+    // -------------------------------------------------------------------------
+    // 6. Logic analyzer outputs on J40
+    //    la_data[3:0] = out_valid[3:0]: shows which output lane is active each cycle
+    //    la_clk = j33_clk32mhz (assigned above): LA samples on this reference
+    // -------------------------------------------------------------------------
+    assign la_data = out_valid;
 
     // -------------------------------------------------------------------------
-    // 4. RX — deserializer (loopback: reads serial_in, jumpered to serial_out)
-    // sync/next_amps shared from TX — in a real system these come from the ADC.
-    // -------------------------------------------------------------------------
-    wire [64*12-1:0] amp_out;   // flat: sample i = amp_out[i*12 +: 12]
-    wire             frame_done;
-
-    adc_rx #(
-        .N_AMPS      (64),
-        .N_ADC_PER_GP(4),
-        .ADC_BITS    (12),
-        .ZERO_CYCLES (16),
-        .GROUP_CYCLES(64),
-        .N_GROUPS    (16)
-    ) u_rx (
-        .clk       (clk32M),
-        .rst_n     (rst_n),
-        .sync      (tx_sync),
-        .next_amps (tx_next_amps),
-        .data      (serial_in),
-        .amp_out   (amp_out),
-        .frame_done(frame_done)
-    );
-
-    // -------------------------------------------------------------------------
-    // 5. Divided clock output — scope/LA verification of PLL frequency
-    //    32 MHz / 2^10 = 31.25 kHz on J39 Pin 9 (D11)
+    // 7. Divided clock output on J39 Pin 9 (D11) — scope frequency reference
     // -------------------------------------------------------------------------
     reg [9:0] clk_div_cnt = 10'd0;
     always @(posedge clk32M) clk_div_cnt <= clk_div_cnt + 1'd1;
     assign clk_div_out = clk_div_cnt[9];
 
     // -------------------------------------------------------------------------
-    // 6. LED status
+    // 8. LED status (clk32M domain — CDC-safe: out_valid double-flopped)
     // -------------------------------------------------------------------------
 
-    // LED[0] — blinks ~1 Hz on healthy frame_done pulses
-    // frame_done fires at 32 MHz / 1024 = 31.25 kHz
-    // bit[14] toggles at 31.25 kHz / 2^15 ≈ 0.95 Hz
-    reg [14:0] frame_cnt = 15'd0;
+    // Two-stage synchronizer: bring out_valid into clk32M domain for LED/watchdog
+    reg [3:0] ov_s1 = 4'd0, ov_s2 = 4'd0;
+    always @(posedge clk32M) begin
+        ov_s1 <= out_valid;
+        ov_s2 <= ov_s1;
+    end
+    wire any_valid = |ov_s2;
+
+    // LED[0] — blinks ~1 Hz while output data is flowing
+    reg [19:0] valid_cnt = 20'd0;
     always @(posedge clk32M or negedge rst_n) begin
-        if (!rst_n)          frame_cnt <= 15'd0;
-        else if (frame_done) frame_cnt <= frame_cnt + 1'd1;
+        if (!rst_n)       valid_cnt <= 20'd0;
+        else if (any_valid) valid_cnt <= valid_cnt + 1'd1;
     end
 
-    // LED[1] — combined error latch:
-    //   (a) watchdog: frame_done stopped arriving (RX dead)
-    //   (b) data check: amp_out[0] differs between repeat cycles (bit error)
-    //
-    // Watchdog: timeout ~65 ms (32 MHz * 2^21 >> 1 frame = 32 µs)
-    reg [20:0] watchdog  = 21'd0;
-    reg        wdog_err  = 1'b0;
+    // LED[1] — watchdog: latches if no out_valid for ~65 ms
+    reg [20:0] watchdog = 21'd0;
+    reg        wdog_err = 1'b0;
     always @(posedge clk32M or negedge rst_n) begin
         if (!rst_n) begin
             watchdog <= 21'd0;
             wdog_err <= 1'b0;
-        end else if (frame_done) begin
+        end else if (any_valid) begin
             watchdog <= 21'd0;
         end else begin
-            if (watchdog == 21'h1FFFFF)
-                wdog_err <= 1'b1;
-            else
-                watchdog <= watchdog + 1'd1;
+            if (watchdog == 21'h1FFFFF) wdog_err <= 1'b1;
+            else                        watchdog <= watchdog + 1'd1;
         end
     end
 
-    // Data checker: TX cycles TEST_ITERS=3 patterns then repeats.
-    // amp_out[0] at frame 0 == amp_out[0] at frame 3 == frame 6 ...
-    // Latch amp_out[0] on the first frame-0, compare on every subsequent one.
-    reg [1:0]  frame_mod  = 2'd0;
-    reg [11:0] ref_amp0   = 12'd0;
-    reg        ref_valid  = 1'b0;
-    reg        data_err   = 1'b0;
-    always @(posedge clk32M or negedge rst_n) begin
-        if (!rst_n) begin
-            frame_mod <= 2'd0;
-            ref_amp0  <= 12'd0;
-            ref_valid <= 1'b0;
-            data_err  <= 1'b0;
-        end else if (frame_done) begin
-            if (frame_mod == 2'd0) begin
-                if (!ref_valid) begin
-                    ref_amp0  <= amp_out[0 +: 12];   // latch sample[0] on first frame-0
-                    ref_valid <= 1'b1;
-                end else if (amp_out[0 +: 12] != ref_amp0) begin
-                    data_err <= 1'b1;          // mismatch on repeat — bit error
-                end
-            end
-            frame_mod <= (frame_mod == 2'd2) ? 2'd0 : frame_mod + 1'd1;
-        end
-    end
-
-    // LED[2] — TX heartbeat: toggles on every sync rising edge
+    // LED[2] — toggles on every rising edge of incoming SYNC
     reg sync_d    = 1'b0;
     reg heartbeat = 1'b0;
     always @(posedge clk32M or negedge rst_n) begin
@@ -196,16 +235,16 @@ module top (
             sync_d    <= 1'b0;
             heartbeat <= 1'b0;
         end else begin
-            sync_d <= tx_sync;
-            if (tx_sync && !sync_d) heartbeat <= ~heartbeat;
+            sync_d <= j33_sync;
+            if (j33_sync && !sync_d) heartbeat <= ~heartbeat;
         end
     end
 
-    // LED assignments (active-low: 0 = illuminated, 1 = off)
-    assign LED[0] = ~frame_cnt[14];          // blinks ~1 Hz when frames arrive
-    assign LED[1] = ~(wdog_err | data_err);  // illuminates on any error
-    assign LED[2] = ~heartbeat;              // TX heartbeat toggle
-    assign LED[3] = ~pll_locked;             // illuminates when PLL locked
+    // LED assignments (active-low)
+    assign LED[0] = ~valid_cnt[19];   // blinks ~1 Hz when data flows
+    assign LED[1] = ~wdog_err;        // ON if no data for ~65 ms
+    assign LED[2] = ~heartbeat;       // toggles on each frame sync
+    assign LED[3] = ~pll_locked;      // ON when PLL locked
     assign LED[4] = 1'b1;
     assign LED[5] = 1'b1;
     assign LED[6] = 1'b1;

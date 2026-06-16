@@ -19,7 +19,7 @@ LPF     := clock.lpf
 # Source files for synthesis — testbench excluded; top is the entry point.
 # Yosys will only elaborate modules reachable from top so tb_adc_stream is
 # safely ignored, but we keep the list explicit to avoid surprises.
-SRCS := top.v ADC_Model_TB.v
+SRCS := top.v ADC_Model_TB.v UWB_Serial_Handler.v
 
 # Intermediate / output artefacts
 JSON := $(DESIGN).json

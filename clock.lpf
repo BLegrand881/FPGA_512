@@ -36,23 +36,95 @@ IOBUF PORT "LED[5]" IO_TYPE=LVCMOS33 DRIVE=4 ;
 IOBUF PORT "LED[6]" IO_TYPE=LVCMOS33 DRIVE=4 ;
 IOBUF PORT "LED[7]" IO_TYPE=LVCMOS33 DRIVE=4 ;
 
-# -----------------------------------------------------------------------------
-# J39 expansion header — ADC serial loopback signals
-#   Pin 5  (B15)  serial_out     TX bitstream   — probe / loopback source
-#   Pin 6  (C15)  serial_in      RX bitstream   — jumper wire from Pin 5
-#   Pin 7  (B13)  sync_out       frame sync     — probe
-#   Pin 8  (B20)  next_amps_out  group boundary — probe
-# -----------------------------------------------------------------------------
-LOCATE COMP "serial_out"    SITE "B15" ;
-LOCATE COMP "serial_in"     SITE "C15" ;
-LOCATE COMP "sync_out"      SITE "B13" ;
-LOCATE COMP "next_amps_out" SITE "B20" ;
-
-IOBUF PORT "serial_out"    IO_TYPE=LVCMOS33 DRIVE=4 ;
-IOBUF PORT "serial_in"     IO_TYPE=LVCMOS33 ;
-IOBUF PORT "sync_out"      IO_TYPE=LVCMOS33 DRIVE=4 ;
-IOBUF PORT "next_amps_out" IO_TYPE=LVCMOS33 DRIVE=4 ;
-
 # J39 Pin 9 (D11) — divided clock output for scope verification (~31 kHz)
 LOCATE COMP "clk_div_out" SITE "D11" ;
 IOBUF PORT "clk_div_out" IO_TYPE=LVCMOS33 DRIVE=4 ;
+
+# -----------------------------------------------------------------------------
+# J32 / J33 expansion headers — external ADC device inputs
+#
+# IMPORTANT PHYSICAL SETUP: VCCIO7 must be 1.5 V.
+#   Move jumper JP11 from pins 1-2 (default 3.3 V) to pins 2-3 (1.5 V).
+#   Verify LED D23 (+1.5 V indicator) is lit after the change.
+#
+# All pins below are in Bank 7 (VCCIO7) and must use IO_TYPE=LVCMOS15.
+# -----------------------------------------------------------------------------
+
+# J32 — 8-bit parallel data bus + control (Bank 7)
+LOCATE COMP "j32_d[1]"        SITE "E3" ;   # J32 Pin 29
+LOCATE COMP "j32_d[2]"        SITE "F5" ;   # J32 Pin 33
+LOCATE COMP "j32_d[3]"        SITE "B1" ;   # J32 Pin 37
+LOCATE COMP "j32_d[4]"        SITE "D3" ;   # J32 Pin 25
+LOCATE COMP "j32_d[5]"        SITE "B3" ;   # J32 Pin 17
+LOCATE COMP "j32_d[6]"        SITE "B4" ;   # J32 Pin 13
+LOCATE COMP "j32_d[7]"        SITE "C5" ;   # J32 Pin 9
+LOCATE COMP "j32_d[8]"        SITE "A5" ;   # J32 Pin 5
+LOCATE COMP "j32_chip_reset"   SITE "D5" ;   # J32 Pin 21
+LOCATE COMP "j32_clkh"         SITE "E4" ;   # J32 Pin 22
+
+# PULLMODE=DOWN on data/clock inputs: holds them at logic-0 if the device is
+# not yet driving or not connected, preventing CMOS input buffer shoot-through.
+# PULLMODE=UP on active-low resets: keeps them deasserted (high) when not driven.
+IOBUF PORT "j32_d[1]"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j32_d[2]"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j32_d[3]"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j32_d[4]"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j32_d[5]"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j32_d[6]"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j32_d[7]"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j32_d[8]"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j32_chip_reset"  IO_TYPE=LVCMOS15 PULLMODE=UP ;   # active-low: idle high = not in reset
+IOBUF PORT "j32_clkh"        IO_TYPE=LVCMOS15 DRIVE=8 ;       # OUTPUT: 32 MHz clock to device
+
+# J33 — SPI / control signals from external ADC device (Bank 7)
+LOCATE COMP "j33_ac_in"       SITE "C2" ;   # J33 Pin 5
+LOCATE COMP "j33_imp_test"    SITE "B2" ;   # J33 Pin 6
+LOCATE COMP "j33_fe_reset"    SITE "D1" ;   # J33 Pin 9
+LOCATE COMP "j33_spi_clk"     SITE "C1" ;   # J33 Pin 10
+LOCATE COMP "j33_spi_latch"   SITE "E1" ;   # J33 Pin 13
+LOCATE COMP "j33_clk32mhz"    SITE "D2" ;   # J33 Pin 14
+LOCATE COMP "j33_spi_dinr"    SITE "G5" ;   # J33 Pin 17  — serial data in (right)
+LOCATE COMP "j33_read"        SITE "H4" ;   # J33 Pin 18  — group-boundary / READ
+LOCATE COMP "j33_spi_dinl"    SITE "H3" ;   # J33 Pin 21  — serial data in (left)
+LOCATE COMP "j33_sync"        SITE "H5" ;   # J33 Pin 22  — frame sync
+LOCATE COMP "j33_stim_en"     SITE "F3" ;   # J33 Pin 25
+LOCATE COMP "j33_stim_chb"    SITE "G3" ;   # J33 Pin 26
+LOCATE COMP "j33_stim_start"  SITE "E2" ;   # J33 Pin 29
+LOCATE COMP "j33_stim_clk"    SITE "F2" ;   # J33 Pin 30
+
+IOBUF PORT "j33_ac_in"      IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j33_imp_test"   IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j33_fe_reset"   IO_TYPE=LVCMOS15 PULLMODE=UP ;   # active-low: idle high = not in reset
+IOBUF PORT "j33_spi_clk"    IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j33_spi_latch"  IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j33_clk32mhz"   IO_TYPE=LVCMOS15 PULLMODE=DOWN ;  # INPUT: decode clock from device
+IOBUF PORT "j33_spi_dinr"   IO_TYPE=LVCMOS15 PULLMODE=DOWN ;  # active RX — DOWN = idle silence
+IOBUF PORT "j33_read"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;  # active RX — DOWN = no pulse
+IOBUF PORT "j33_spi_dinl"   IO_TYPE=LVCMOS15 PULLMODE=DOWN ;
+IOBUF PORT "j33_sync"       IO_TYPE=LVCMOS15 PULLMODE=DOWN ;  # active RX — DOWN = no sync
+IOBUF PORT "j33_stim_en"    IO_TYPE=LVCMOS15 DRIVE=4 ;        # output — driven by FPGA, no pull needed
+IOBUF PORT "j33_stim_chb"   IO_TYPE=LVCMOS15 DRIVE=4 ;
+IOBUF PORT "j33_stim_start" IO_TYPE=LVCMOS15 DRIVE=4 ;
+IOBUF PORT "j33_stim_clk"   IO_TYPE=LVCMOS15 DRIVE=4 ;
+
+# -----------------------------------------------------------------------------
+# J40 Versa header — logic analyzer output (Bank 0, VCCIO0 = 3.3 V default)
+#
+# Pin 2 is GND — connect logic analyzer ground clip here.
+# la_clk  (Pin 1, K2)  : decode clock passthrough (j33_clk32mhz re-exported)
+# la_data  (Pins 3-6)  : out_valid[3:0] — active lane strobes from 8:4 TDM mux
+#
+# No jumper change needed: VCCIO0 defaults to 3.3 V via JP10 (pins 1-2).
+# Use IO_TYPE=LVCMOS33 for Bank 0.
+# -----------------------------------------------------------------------------
+LOCATE COMP "la_clk"     SITE "K2" ;   # J40 Pin 1
+LOCATE COMP "la_data[0]" SITE "A15" ;  # J40 Pin 3
+LOCATE COMP "la_data[1]" SITE "F1" ;   # J40 Pin 4
+LOCATE COMP "la_data[2]" SITE "H2" ;   # J40 Pin 5
+LOCATE COMP "la_data[3]" SITE "G1" ;   # J40 Pin 6
+
+IOBUF PORT "la_clk"     IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "la_data[0]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "la_data[1]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "la_data[2]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "la_data[3]" IO_TYPE=LVCMOS33 DRIVE=4 ;
