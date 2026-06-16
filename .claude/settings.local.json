@@ -15,7 +15,20 @@
       "Bash(mdls FPGA-EB-02017-1-3-ECP5-Evaluation-Board.pdf)",
       "Bash(brew install:*)",
       "Bash(pdftotext /Users/banjo/Documents/COMP/RISE/FPGA_512/FPGA-EB-02017-1-3-ECP5-Evaluation-Board.pdf -)",
-      "Bash(grep -A 200 \"Table 5\\\\.2\\\\. Versa J40 Header Pin Connections:*)"
+      "Bash(grep -A 200 \"Table 5\\\\.2\\\\. Versa J40 Header Pin Connections:*)",
+      "Bash(make sim:*)",
+      "Bash(make:*)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(brew tap:*)",
+      "Bash(ls /opt/homebrew/bin/ecp*)",
+      "Bash(nextpnr-ecp5:*)",
+      "Read(//Applications/**)",
+      "Bash(find / -maxdepth 6 -name nextpnr-ecp5)",
+      "Bash(mdfind nextpnr-ecp5:*)",
+      "Bash(mdfind oss-cad-suite:*)",
+      "Bash(/opt/oss-cad-suite/bin/nextpnr-ecp5 --version 2>&1)",
+      "Bash(/opt/oss-cad-suite/bin/openFPGALoader --list-boards)"
     ]
   }
 }

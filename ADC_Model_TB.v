@@ -25,10 +25,13 @@ module adc_stream_gen #(
     reg [ADC_BITS-1:0] amp [0:TEST_ITERS-1][0:N_AMPS-1];
 
     integer t_init, i_init;
+    // Deterministic init — no $random so synthesis tools can infer ROM.
+    // Values are unique per (t_init, i_init); testbench reads u_tx.amp[] so
+    // the actual pattern doesn't matter as long as it's consistent.
     initial begin
         for (t_init = 0; t_init < TEST_ITERS; t_init = t_init + 1)
             for (i_init = 0; i_init < N_AMPS; i_init = i_init + 1)
-                amp[t_init][i_init] = $random & ((1<<ADC_BITS)-1);
+                amp[t_init][i_init] = ((t_init * N_AMPS + i_init + 1) * 2971 + 1337) & ((1<<ADC_BITS)-1);
     end
 
     // -------------------- state --------------------
@@ -107,7 +110,7 @@ module adc_rx #(
     input  wire sync,
     input  wire next_amps,
     input  wire data,
-    output reg  [ADC_BITS-1:0] amp_out [0:N_AMPS-1],
+    output reg  [N_AMPS*ADC_BITS-1:0] amp_out,  // flat: amp[i] = amp_out[i*ADC_BITS +: ADC_BITS]
     output reg  frame_done
 );
     // Strategy: a per-group cycle counter (0..GROUP_CYCLES-1) driven by
@@ -121,7 +124,7 @@ module adc_rx #(
 
     initial begin
         for (k_init = 0; k_init < N_AMPS; k_init = k_init + 1)
-            amp_out[k_init] = 0;
+            amp_out[k_init*ADC_BITS +: ADC_BITS] = 0;
     end
 
     always @(posedge clk or negedge rst_n) begin
@@ -154,7 +157,7 @@ module adc_rx #(
                 which_adc = bit_idx % N_ADC_PER_GP;
                 which_bit = bit_idx / N_ADC_PER_GP;
                 amp_index = N_ADC_PER_GP * group_idx + which_adc;
-                amp_out[amp_index][which_bit] <= data;
+                amp_out[amp_index*ADC_BITS + which_bit] <= data;
             end
 
             // Pulse frame_done at the end of the last group of the frame.
@@ -165,6 +168,7 @@ module adc_rx #(
 endmodule
 
 
+// synthesis translate_off
 // =====================================================================
 //  Testbench top
 // =====================================================================
@@ -185,7 +189,7 @@ module tb_adc_stream;
     reg  clk = 0;
     reg  rst_n = 0;
     wire sync, next_amps, data;
-    wire [ADC_BITS-1:0] amp_out [0:N_AMPS-1];
+    wire [N_AMPS*ADC_BITS-1:0] amp_out;
     wire frame_done;
 
     always #(CLK_PERIOD/2) clk = ~clk;
@@ -229,7 +233,7 @@ module tb_adc_stream;
         begin
             for (i = 0; i < N_AMPS; i = i + 1) begin
                 exp_v = u_tx.amp[iter][i];
-                got_v = amp_out[i];
+                got_v = amp_out[i*ADC_BITS +: ADC_BITS];
                 compares = compares + 1;
                 if (exp_v !== got_v) begin
                     errors = errors + 1;
@@ -276,3 +280,4 @@ module tb_adc_stream;
     end
 
 endmodule
+// synthesis translate_on

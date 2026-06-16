@@ -2,11 +2,22 @@ BLOCK RESETPATHS ;
 BLOCK ASYNCPATHS ;
 SYSCONFIG MASTER_SPI_PORT=ENABLE MCCLK_FREQ=62 ;
 
-FREQUENCY NET "clk_x1_c" 12.000000 MHz;
-
+# -----------------------------------------------------------------------------
+# Clock — 12 MHz from FTDI (JP2 must be installed, USB connected)
+# -----------------------------------------------------------------------------
 LOCATE COMP "clk_x1" SITE "A10" ;
-LOCATE COMP "rstn" SITE "P4" ;
+IOBUF PORT "clk_x1" IO_TYPE=LVCMOS33 ;
+FREQUENCY NET "clk_x1" 12.000000 MHz ;
 
+# -----------------------------------------------------------------------------
+# Reset — SW4, active-low
+# -----------------------------------------------------------------------------
+LOCATE COMP "rstn" SITE "P4" ;
+IOBUF PORT "rstn" IO_TYPE=LVCMOS33 ;
+
+# -----------------------------------------------------------------------------
+# LEDs — active-low, Bank 1
+# -----------------------------------------------------------------------------
 LOCATE COMP "LED[0]" SITE "A13" ;
 LOCATE COMP "LED[1]" SITE "A12" ;
 LOCATE COMP "LED[2]" SITE "B19" ;
@@ -15,3 +26,33 @@ LOCATE COMP "LED[4]" SITE "B18" ;
 LOCATE COMP "LED[5]" SITE "C17" ;
 LOCATE COMP "LED[6]" SITE "A17" ;
 LOCATE COMP "LED[7]" SITE "B17" ;
+
+IOBUF PORT "LED[0]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "LED[1]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "LED[2]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "LED[3]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "LED[4]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "LED[5]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "LED[6]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "LED[7]" IO_TYPE=LVCMOS33 DRIVE=4 ;
+
+# -----------------------------------------------------------------------------
+# J39 expansion header — ADC serial loopback signals
+#   Pin 5  (B15)  serial_out     TX bitstream   — probe / loopback source
+#   Pin 6  (C15)  serial_in      RX bitstream   — jumper wire from Pin 5
+#   Pin 7  (B13)  sync_out       frame sync     — probe
+#   Pin 8  (B20)  next_amps_out  group boundary — probe
+# -----------------------------------------------------------------------------
+LOCATE COMP "serial_out"    SITE "B15" ;
+LOCATE COMP "serial_in"     SITE "C15" ;
+LOCATE COMP "sync_out"      SITE "B13" ;
+LOCATE COMP "next_amps_out" SITE "B20" ;
+
+IOBUF PORT "serial_out"    IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "serial_in"     IO_TYPE=LVCMOS33 ;
+IOBUF PORT "sync_out"      IO_TYPE=LVCMOS33 DRIVE=4 ;
+IOBUF PORT "next_amps_out" IO_TYPE=LVCMOS33 DRIVE=4 ;
+
+# J39 Pin 9 (D11) — divided clock output for scope verification (~31 kHz)
+LOCATE COMP "clk_div_out" SITE "D11" ;
+IOBUF PORT "clk_div_out" IO_TYPE=LVCMOS33 DRIVE=4 ;

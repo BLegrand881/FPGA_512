@@ -4,11 +4,17 @@
 # Programmer: openFPGALoader  (or swap for ecpprog / fujprog)
 # =============================================================================
 
+OSS_CAD  := /opt/oss-cad-suite/bin
+YOSYS    := $(OSS_CAD)/yosys
+NEXTPNR  := $(OSS_CAD)/nextpnr-ecp5
+ECPPACK  := $(OSS_CAD)/ecppack
+IVERILOG := iverilog
+
 DESIGN  := top
 DEVICE  := um5g-85k          # LFE5UM5G-85F
 PACKAGE := CABGA381
 SPEED   := 8
-LPF     := ecp5_eval.lpf
+LPF     := clock.lpf
 
 # Source files for synthesis — testbench excluded; top is the entry point.
 # Yosys will only elaborate modules reachable from top so tb_adc_stream is
@@ -27,13 +33,13 @@ all: $(BIT)
 
 # 1. Synthesis — Yosys with SystemVerilog mode for unpacked array ports
 $(JSON): $(SRCS)
-	yosys \
+	$(YOSYS) \
 	  -p "read_verilog -sv $(SRCS); \
 	      synth_ecp5 -top $(DESIGN) -json $@"
 
 # 2. Place-and-route — nextpnr-ecp5
 $(CFG): $(JSON) $(LPF)
-	nextpnr-ecp5 \
+	$(NEXTPNR) \
 	  --$(DEVICE) \
 	  --package $(PACKAGE) \
 	  --speed $(SPEED) \
@@ -43,11 +49,13 @@ $(CFG): $(JSON) $(LPF)
 
 # 3. Pack bitstream — ecppack
 $(BIT): $(CFG)
-	ecppack --compress $(CFG) $@
+	$(ECPPACK) --compress $(CFG) $@
 
 # 4. Program via openFPGALoader (USB JTAG on-board)
+# Note: 'prog' depends on $(BIT) so it runs the full build chain automatically.
+# Full flow in one command: make sim && make prog
 prog: $(BIT)
-	openFPGALoader -b ecp5_eval $(BIT)
+	$(OSS_CAD)/openFPGALoader -b ecp5_evn $(BIT)
 
 # 5. Simulation (iverilog) — runs the existing testbench
 sim:
