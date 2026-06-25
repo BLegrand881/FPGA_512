@@ -152,17 +152,17 @@ module top (
     //
     //   Output : out_valid[3:0] — one strobe per output lane (pair of channels)
     //            out_word[0:3]  — 12-bit ADC word per lane when valid
-    //            out_chsel[3:0] — which sub-channel (0=even, 1=odd) is on each lane
+    //            out_chsel[3:0] — sub-channel tag (0=even, 1=odd); consumed by framer
     // -------------------------------------------------------------------------
     wire [3:0]  out_valid;
-    wire [11:0] out_word [0:3];
+    wire [47:0] out_word;   // packed: lane p = out_word[p*12 +: 12]
     wire [3:0]  out_chsel;
 
     rx_process_mux #(
         .N_CH         (8),
         .N_ADC_PER_GP (4),
         .ADC_BITS     (12),
-        .ZERO_CYCLES  (16),
+        .ZERO_CYCLES  (13),
         .GROUP_CYCLES (64),
         .N_GROUPS     (16),
         .SAMPS_PER_FR (64),
@@ -179,22 +179,72 @@ module top (
         .out_chsel    (out_chsel)
     );
 
-    // -------------------------------------------------------------------------
-    // 6. Logic analyzer outputs on J40
-    //    la_data[3:0] = out_valid[3:0]: shows which output lane is active each cycle
-    //    la_clk = j33_clk32mhz (assigned above): LA samples on this reference
-    // -------------------------------------------------------------------------
-    assign la_data = out_valid;
+    // out_chsel is implicit in word ordering; not needed by downstream framer
+    wire _chsel_unused = &{1'b0, out_chsel};
 
     // -------------------------------------------------------------------------
-    // 7. Divided clock output on J39 Pin 9 (D11) — scope frequency reference
+    // 6. Lane framers — 4 independent serial output streams
+    //
+    //   Each lane_framer accumulates 128 words from the TDM mux, then emits:
+    //     [SYNC(12b)][LANE_ID(12b)][CYCLE_CNT(12b)][DATA×128][CRC-12(12b)]
+    //   = 132 words × 12 bits = 1584 serial clock cycles per frame.
+    //
+    //   Sync words (DC-balanced, unique per lane — see FRAMING_SPEC.txt):
+    //     Lane 0: 0xA35   Lane 1: 0xB46   Lane 2: 0xC57   Lane 3: 0xD68
+    //
+    //   la_clk (j33_clk32mhz) is the bit clock for all four lanes.
+    // -------------------------------------------------------------------------
+    wire [3:0] serial_lane;
+
+    lane_framer #(.SYNC_WORD(12'hA35), .LANE_NUM(2'd0)) u_frame0 (
+        .clk       (j33_clk32mhz),
+        .rst_n     (rst_rx_n),
+        .in_valid  (out_valid[0]),
+        .in_word   (out_word[0*12 +: 12]),
+        .serial_out(serial_lane[0])
+    );
+
+    lane_framer #(.SYNC_WORD(12'hB46), .LANE_NUM(2'd1)) u_frame1 (
+        .clk       (j33_clk32mhz),
+        .rst_n     (rst_rx_n),
+        .in_valid  (out_valid[1]),
+        .in_word   (out_word[1*12 +: 12]),
+        .serial_out(serial_lane[1])
+    );
+
+    lane_framer #(.SYNC_WORD(12'hC57), .LANE_NUM(2'd2)) u_frame2 (
+        .clk       (j33_clk32mhz),
+        .rst_n     (rst_rx_n),
+        .in_valid  (out_valid[2]),
+        .in_word   (out_word[2*12 +: 12]),
+        .serial_out(serial_lane[2])
+    );
+
+    lane_framer #(.SYNC_WORD(12'hD68), .LANE_NUM(2'd3)) u_frame3 (
+        .clk       (j33_clk32mhz),
+        .rst_n     (rst_rx_n),
+        .in_valid  (out_valid[3]),
+        .in_word   (out_word[3*12 +: 12]),
+        .serial_out(serial_lane[3])
+    );
+
+    // -------------------------------------------------------------------------
+    // 7. J40 serial output assignments
+    //    la_clk  = j33_clk32mhz: bit-clock reference for logic analyzer / UWB chip
+    //    la_data = serial_lane:   4 framed serial streams, 1 bit per clock, MSB-first
+    //    NOTE: data launches on rising edge of la_clk — sample on FALLING edge
+    // -------------------------------------------------------------------------
+    assign la_data = serial_lane;
+
+    // -------------------------------------------------------------------------
+    // 8. Divided clock output on J39 Pin 9 (D11) — scope frequency reference
     // -------------------------------------------------------------------------
     reg [9:0] clk_div_cnt = 10'd0;
     always @(posedge clk32M) clk_div_cnt <= clk_div_cnt + 1'd1;
     assign clk_div_out = clk_div_cnt[9];
 
     // -------------------------------------------------------------------------
-    // 8. LED status (clk32M domain — CDC-safe: out_valid double-flopped)
+    // 9. LED status (clk32M domain — CDC-safe: out_valid double-flopped)
     // -------------------------------------------------------------------------
 
     // Two-stage synchronizer: bring out_valid into clk32M domain for LED/watchdog
