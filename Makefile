@@ -14,12 +14,12 @@ DESIGN  := top
 DEVICE  := um5g-85k          # LFE5UM5G-85F
 PACKAGE := CABGA381
 SPEED   := 8
-LPF     := clock.lpf
+LPF     := fpga/clock.lpf
 
 # Source files for synthesis — testbench excluded; top is the entry point.
 # Yosys will only elaborate modules reachable from top so tb_adc_stream is
 # safely ignored, but we keep the list explicit to avoid surprises.
-SRCS := top.v ADC_Model_TB.v UWB_Serial_Handler.v
+SRCS := fpga/top.v fpga/ADC_Model_TB.v fpga/UWB_Serial_Handler.v
 
 # Intermediate / output artefacts
 JSON := $(DESIGN).json
@@ -59,7 +59,7 @@ prog: $(BIT)
 
 # 5. Simulation (iverilog) — runs the existing testbench
 sim:
-	iverilog -g2012 -o sim_tb ADC_Model_TB.v && vvp sim_tb
+	iverilog -g2012 -o sim_tb fpga/ADC_Model_TB.v && vvp sim_tb
 
 # Clean build artefacts
 clean:

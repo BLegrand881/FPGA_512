@@ -1,0 +1,171 @@
+================================================================================
+  SERIAL OUTPUT FRAMING SPECIFICATION
+  8-Channel ADC → 4-Lane Serial Output (FPGA → UWB Chip)
+  ECP5-5G Eval Board
+================================================================================
+
+OVERVIEW
+--------
+The FPGA receives 8 independent serial ADC bitstreams (D[1:8] via J32) and
+merges them into 4 serial output lanes via an 8:4 TDM mux. Each lane carries
+data from one channel pair. A framing structure is prepended and appended to
+each block of 128 data words so that the downstream receiver (UWB chip) can:
+
+  1. Lock to the correct word boundary (sync)
+  2. Identify which lane (and therefore which channel pair) it is reading
+  3. Know which position within the amplifier cycle it is at
+  4. Detect transmission errors
+
+
+LANE ASSIGNMENTS
+----------------
+  Lane 0  →  Channel 0 (even) + Channel 1 (odd)
+  Lane 1  →  Channel 2 (even) + Channel 3 (odd)
+  Lane 2  →  Channel 4 (even) + Channel 5 (odd)
+  Lane 3  →  Channel 6 (even) + Channel 7 (odd)
+
+Each lane is an independent 12-bit-wide serial stream.
+Word width: 12 bits (matching the ADC resolution).
+
+
+FRAME STRUCTURE  (per lane, per amplifier cycle)
+-------------------------------------------------
+
+  +----------------+----------------+----------------+-----...-----+----------+
+  |  SYNC WORD     |  LANE ID       |  CYCLE COUNT   |  DATA × 128 |  CRC-12  |
+  |  12 bits       |  12 bits       |  12 bits       |  1536 bits  |  12 bits |
+  +----------------+----------------+----------------+-----...-----+----------+
+   Word 0           Word 1           Word 2           Words 3–130   Word 131
+
+Total frame length: 132 words × 12 bits = 1584 bits per lane per cycle.
+
+
+FIELD DEFINITIONS
+-----------------
+
+[Word 0]  SYNC WORD  (12 bits)
+  Unique per lane. Chosen for DC balance (6 ones, 6 zeros) and low
+  autocorrelation with adjacent lane sync words to prevent cross-lane
+  false lock.
+
+    Lane 0:  12'b1010_0011_0101  (0xA35)
+    Lane 1:  12'b1011_0100_0110  (0xB46)
+    Lane 2:  12'b1100_0101_0111  (0xC57)
+    Lane 3:  12'b1101_0110_1000  (0xD68)
+
+  The receiver hunts for this exact 12-bit pattern to establish word lock.
+  Lock is not declared until SYNC, LANE_ID, and CYCLE_CNT are all
+  consistent across two consecutive frames.
+
+[Word 1]  LANE ID  (12 bits)
+  Encodes the lane number with a redundancy check.
+
+    Bits [11:6]  =  lane number (0–3), zero-extended to 6 bits
+    Bits  [5:0]  =  bitwise complement of bits [11:6]
+
+  Example — Lane 2:
+    Bits [11:6] = 6'b000010
+    Bits  [5:0] = 6'b111101
+    Combined:    12'b000010_111101
+
+  The receiver accepts the field only if bits[5:0] == ~bits[11:6].
+  A mismatch flags a header error for this frame.
+
+  Since channels within a lane alternate (even/odd), the receiver derives
+  the specific channel numbers as:
+    Channel even = lane_number × 2
+    Channel odd  = lane_number × 2 + 1
+
+[Word 2]  CYCLE COUNT  (12 bits)
+  A 12-bit rolling counter (0–4095, wraps) incremented once per frame per
+  lane. All four lanes increment their counters in lockstep.
+
+  The receiver uses this to:
+    - Confirm sequential frames are being received (no drops)
+    - Determine position within the amplifier cycle
+    - Re-synchronize after a gap (knows exactly where in the scan it is)
+
+[Words 3–130]  DATA BLOCK  (128 × 12-bit words = 1536 bits)
+  Contains 64 amplifier steps × 2 sub-channels (even + odd), interleaved:
+
+    Word 3   →  Channel EVEN,  Amplifier 0
+    Word 4   →  Channel ODD,   Amplifier 0
+    Word 5   →  Channel EVEN,  Amplifier 1
+    Word 6   →  Channel ODD,   Amplifier 1
+    ...
+    Word 129 →  Channel EVEN,  Amplifier 63
+    Word 130 →  Channel ODD,   Amplifier 63
+
+  Word position within the data block implicitly encodes (channel, amplifier):
+    amplifier  = (word_index - 3) / 2
+    is_odd_ch  = (word_index - 3) % 2
+
+[Word 131]  CRC-12  (12 bits)
+  CRC-12 computed over the 128 data words only (Words 3–130).
+  Header words (SYNC, LANE_ID, CYCLE_CNT) are excluded from the CRC.
+
+  Polynomial: 0x80F  (x^12 + x^11 + x^3 + x^2 + x + 1)
+    — standard telecom CRC-12, matches ITU-T
+
+  Error detection capability:
+    - All single-bit errors: 100%
+    - All double-bit errors: 100%
+    - All triple-bit errors: 100%  (Hamming distance = 4)
+    - All burst errors ≤ 12 bits: 100%
+    - Longer random bursts: ~99.976% (undetected rate = 1/4096)
+
+  A frame whose CRC does not match is discarded. The receiver re-locks on
+  the next valid SYNC and uses CYCLE_CNT to determine how many frames were
+  lost.
+
+
+RECEIVER LOCK SEQUENCE
+-----------------------
+  1. Scan incoming 12-bit words for a known SYNC pattern (0xA35 / 0xB46 /
+     0xC57 / 0xD68).
+  2. On candidate SYNC match, check Word+1 for valid LANE_ID complement.
+  3. Record CYCLE_CNT from Word+2.
+  4. Verify CRC-12 at Word+131.
+  5. On next frame, confirm SYNC reappears at Word+132, LANE_ID is the same,
+     and CYCLE_CNT incremented by 1.
+  6. Lock declared. Begin decoding data block using word-position mapping.
+
+  False lock probability (all three header fields consistent by chance):
+    P ≈ (1/4096) × (1/64) × (1/4096)  ≈  9 × 10⁻¹⁰  (effectively zero)
+
+
+PHYSICAL OUTPUT  (J40, Bank 0, 3.3 V)
+--------------------------------------
+  Pin 1  (K2)   la_clk      — 32 MHz decode clock (passthrough of j33_clk32mhz)
+  Pin 2         GND         — logic analyzer / receiver ground reference
+  Pin 3  (A15)  la_data[0]  — Lane 0 serial stream  (channels 0 & 1)
+  Pin 4  (F1)   la_data[1]  — Lane 1 serial stream  (channels 2 & 3)
+  Pin 5  (H2)   la_data[2]  — Lane 2 serial stream  (channels 4 & 5)
+  Pin 6  (G1)   la_data[3]  — Lane 3 serial stream  (channels 6 & 7)
+
+  Data is clocked out MSB-first, one 12-bit word per 12 clock cycles.
+  Data launches on the RISING edge of la_clk — receiver samples on the FALLING edge.
+
+
+TIMING
+------
+  Serial clock:  32 MHz  (j33_clk32mhz, the device's own transmit clock)
+  Bits per frame: 1584 bits per lane
+  Frame rate:    32 MHz / 1584 ≈ 20.2 kHz
+  Latency:       One frame (132 words) from rx_process_mux output to
+                 first serial bit at J40
+
+
+IMPLEMENTATION STATUS
+---------------------
+  [DONE]   rx_process_mux — 8-channel deserializer + 8:4 TDM mux
+  [DONE]   top.v          — clock domains, reset sync, LA output ports
+  [DONE]   clock.lpf      — pin constraints for J32, J33, J40
+  [TODO]   Serializer module — takes out_word[0:3] + out_valid + out_chsel,
+                               inserts framing, outputs 4 serial streams
+  [TODO]   Replace la_data = out_valid (current placeholder) with
+           actual serialized lane data
+  [TODO]   Update sync words in rx_process_mux from shared 0xCAF/0xEF0/0x0D5
+           to per-lane values 0xA35 / 0xB46 / 0xC57 / 0xD68
+
+================================================================================

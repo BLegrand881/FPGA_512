@@ -1,0 +1,15 @@
+# Build artifacts
+*.json
+*.cfg
+*.bit
+sim_tb
+*.vcd
+
+# Large data files
+analysis/*.h5
+
+# Claude session notes
+CLAUDE_SESSION.md
+
+# macOS
+.DS_Store
