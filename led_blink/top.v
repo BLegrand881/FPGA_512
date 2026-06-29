@@ -22,7 +22,7 @@ always @(posedge clk)
 // One LED on at a time — sequential scan
 reg [3:0] led_r;
 always @(*) begin
-    case (cnt[24:23])
+    case (cnt[22:21])
         2'd0: led_r = 4'b0001; // D1 on
         2'd1: led_r = 4'b0010; // D2 on
         2'd2: led_r = 4'b0100; // D0 on
