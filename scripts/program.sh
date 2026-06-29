@@ -8,14 +8,14 @@ set -e
 OSS_CAD=/opt/oss-cad-suite/bin
 
 echo "==> Synthesis (Yosys)..."
-$OSS_CAD/yosys -p "read_verilog -sv top.v ADC_Model_TB.v UWB_Serial_Handler.v; synth_ecp5 -top top -json top.json"
+$OSS_CAD/yosys -p "read_verilog -sv fpga/top.v fpga/ADC_Model_TB.v fpga/UWB_Serial_Handler.v; synth_ecp5 -top top -json top.json"
 
 echo "==> Place and route (nextpnr-ecp5)..."
 $OSS_CAD/nextpnr-ecp5 \
     --um5g-85k \
     --package CABGA381 \
     --speed 8 \
-    --lpf clock.lpf \
+    --lpf fpga/clock.lpf \
     --json top.json \
     --textcfg top.cfg
 
