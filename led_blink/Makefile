@@ -4,9 +4,9 @@ NEXTPNR := $(OSS_CAD)/nextpnr-ecp5
 ECPPACK := $(OSS_CAD)/ecppack
 
 DESIGN  := top
-DEVICE  := um5g-85k
-PACKAGE := CABGA381
-SPEED   := 8
+DEVICE  := 25k
+PACKAGE := CABGA256
+SPEED   := 6
 LPF     := blink.lpf
 
 JSON := $(DESIGN).json
@@ -28,7 +28,7 @@ $(BIT): $(CFG)
 	$(ECPPACK) --compress $(CFG) $@
 
 prog: $(BIT)
-	$(OSS_CAD)/openFPGALoader -b ecp5_evn $(BIT)
+	$(OSS_CAD)/openFPGALoader $(BIT)
 
 clean:
 	rm -f $(JSON) $(CFG) $(BIT)

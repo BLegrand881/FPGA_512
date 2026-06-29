@@ -2,14 +2,10 @@ BLOCK RESETPATHS ;
 BLOCK ASYNCPATHS ;
 SYSCONFIG MASTER_SPI_PORT=ENABLE MCCLK_FREQ=62 ;
 
-# Clock — 12 MHz from FTDI (JP2 installed, USB connected)
-LOCATE COMP "clk" SITE "A10" ;
+# Clock — 16 MHz oscillator X1 at FPGA pin A7
+LOCATE COMP "clk" SITE "A7" ;
 IOBUF PORT "clk" IO_TYPE=LVCMOS33 ;
-FREQUENCY NET "clk" 12.000000 MHz ;
-
-# Reset — SW4, active-low
-LOCATE COMP "rstn" SITE "P4" ;
-IOBUF PORT "rstn" IO_TYPE=LVCMOS33 ;
+FREQUENCY NET "clk" 16.000000 MHz ;
 
 # External LEDs — active-high, Bank 1 LVCMOS33
 # Schematic: D1=P16, D2=M13, D0=R16, D3=N14
