@@ -1,34 +1,29 @@
-OSS_CAD := /opt/oss-cad-suite/bin
-YOSYS   := $(OSS_CAD)/yosys
-NEXTPNR := $(OSS_CAD)/nextpnr-ecp5
-ECPPACK := $(OSS_CAD)/ecppack
+YOSYS   := yosys
+NEXTPNR := nextpnr-ecp5
+ECPPACK := ecppack
 
 DESIGN  := top
-DEVICE  := 25k
-PACKAGE := CABGA256
-SPEED   := 6
 LPF     := blink.lpf
 
-JSON := $(DESIGN).json
-CFG  := $(DESIGN).cfg
-BIT  := $(DESIGN).bit
+JSON    := $(DESIGN).json
+CFG     := $(DESIGN).config
+BIT     := $(DESIGN).bit
 
 .PHONY: all prog clean
 
 all: $(BIT)
 
 $(JSON): $(DESIGN).v
-	$(YOSYS) -p "read_verilog -sv $<; synth_ecp5 -top $(DESIGN) -json $@"
+	$(YOSYS) -p "read_verilog $(DESIGN).v; synth_ecp5 -top $(DESIGN) -json $@"
 
 $(CFG): $(JSON) $(LPF)
-	$(NEXTPNR) --$(DEVICE) --package $(PACKAGE) --speed $(SPEED) \
-	           --lpf $(LPF) --json $(JSON) --textcfg $@
+	$(NEXTPNR) --25k --package CABGA256 --json $(JSON) --lpf $(LPF) --textcfg $@
 
 $(BIT): $(CFG)
-	$(ECPPACK) --compress $(CFG) $@
+	$(ECPPACK) --spimode fast-read $(CFG) $@
 
 prog: $(BIT)
-	$(OSS_CAD)/openFPGALoader $(BIT)
+	openFPGALoader -c dirtyJtag --fpga-part LFE5U-25F -f $(BIT)
 
 clean:
 	rm -f $(JSON) $(CFG) $(BIT)
