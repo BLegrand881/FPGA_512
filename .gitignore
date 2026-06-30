@@ -8,6 +8,7 @@ sim_tb_h5
 
 # Large data files
 analysis/*.h5
+sine-all-5.h5
 
 # Claude Code local config (machine-specific)
 .claude/settings.local.json
