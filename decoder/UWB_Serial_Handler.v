@@ -129,9 +129,10 @@ module rx_process_mux #(
             wire push_now = in_data_phase && (which_bit == ADC_BITS - 1);
 
             assign rx_fifo_wen[ch]   = push_now && !rx_fifo_full[ch];
-            assign rx_fifo_wdata[ch] = (which_adc == 2'd0) ? sr0[ch] :
-                                       (which_adc == 2'd1) ? sr1[ch] :
-                                       (which_adc == 2'd2) ? sr2[ch] : sr3[ch];
+            assign rx_fifo_wdata[ch] = (which_adc == 2'd0) ? {data_in[ch], sr0[ch][ADC_BITS-1:1]} :
+                                       (which_adc == 2'd1) ? {data_in[ch], sr1[ch][ADC_BITS-1:1]} :
+                                       (which_adc == 2'd2) ? {data_in[ch], sr2[ch][ADC_BITS-1:1]} :
+                                                             {data_in[ch], sr3[ch][ADC_BITS-1:1]};
 
             sync_fifo #(.W(ADC_BITS), .D(RX_FIFO_DEPTH)) u_rx_fifo (
                 .clk  (clk),
@@ -187,6 +188,10 @@ module rx_process_mux #(
     //==========================================================================
     reg [3:0] mux_sel;
 
+    // effective_empty: a channel with a pending ren (registered, fires next cycle)
+    // must be treated as already consumed — its rdata is still the stale head.
+    wire [N_CH-1:0] eff_empty = tx_fifo_empty | tx_fifo_ren;
+
     // Per-lane channel selects (combinatorial, depend on mux_sel)
     wire [2:0] first0  = mux_sel[0] ? 3'd1 : 3'd0;
     wire [2:0] second0 = mux_sel[0] ? 3'd0 : 3'd1;
@@ -209,13 +214,13 @@ module rx_process_mux #(
             tx_fifo_ren <= '0;
 
             // Lane 0: channels 0 (even) and 1 (odd)
-            if (!tx_fifo_empty[first0]) begin
+            if (!eff_empty[first0]) begin
                 tx_fifo_ren[first0]  <= 1'b1;
                 out_word[0 +: 12]    <= tx_fifo_rdata[first0];
                 out_valid[0]         <= 1'b1;
                 out_chsel[0]         <= mux_sel[0];
                 mux_sel[0]           <= ~mux_sel[0];
-            end else if (!tx_fifo_empty[second0]) begin
+            end else if (!eff_empty[second0]) begin
                 tx_fifo_ren[second0] <= 1'b1;
                 out_word[0 +: 12]    <= tx_fifo_rdata[second0];
                 out_valid[0]         <= 1'b1;
@@ -225,13 +230,13 @@ module rx_process_mux #(
             end
 
             // Lane 1: channels 2 (even) and 3 (odd)
-            if (!tx_fifo_empty[first1]) begin
+            if (!eff_empty[first1]) begin
                 tx_fifo_ren[first1]  <= 1'b1;
                 out_word[12 +: 12]   <= tx_fifo_rdata[first1];
                 out_valid[1]         <= 1'b1;
                 out_chsel[1]         <= mux_sel[1];
                 mux_sel[1]           <= ~mux_sel[1];
-            end else if (!tx_fifo_empty[second1]) begin
+            end else if (!eff_empty[second1]) begin
                 tx_fifo_ren[second1] <= 1'b1;
                 out_word[12 +: 12]   <= tx_fifo_rdata[second1];
                 out_valid[1]         <= 1'b1;
@@ -241,13 +246,13 @@ module rx_process_mux #(
             end
 
             // Lane 2: channels 4 (even) and 5 (odd)
-            if (!tx_fifo_empty[first2]) begin
+            if (!eff_empty[first2]) begin
                 tx_fifo_ren[first2]  <= 1'b1;
                 out_word[24 +: 12]   <= tx_fifo_rdata[first2];
                 out_valid[2]         <= 1'b1;
                 out_chsel[2]         <= mux_sel[2];
                 mux_sel[2]           <= ~mux_sel[2];
-            end else if (!tx_fifo_empty[second2]) begin
+            end else if (!eff_empty[second2]) begin
                 tx_fifo_ren[second2] <= 1'b1;
                 out_word[24 +: 12]   <= tx_fifo_rdata[second2];
                 out_valid[2]         <= 1'b1;
@@ -257,13 +262,13 @@ module rx_process_mux #(
             end
 
             // Lane 3: channels 6 (even) and 7 (odd)
-            if (!tx_fifo_empty[first3]) begin
+            if (!eff_empty[first3]) begin
                 tx_fifo_ren[first3]  <= 1'b1;
                 out_word[36 +: 12]   <= tx_fifo_rdata[first3];
                 out_valid[3]         <= 1'b1;
                 out_chsel[3]         <= mux_sel[3];
                 mux_sel[3]           <= ~mux_sel[3];
-            end else if (!tx_fifo_empty[second3]) begin
+            end else if (!eff_empty[second3]) begin
                 tx_fifo_ren[second3] <= 1'b1;
                 out_word[36 +: 12]   <= tx_fifo_rdata[second3];
                 out_valid[3]         <= 1'b1;

@@ -19,7 +19,7 @@ LPF     := fpga/clock.lpf
 # Source files for synthesis — testbench excluded; top is the entry point.
 # Yosys will only elaborate modules reachable from top so tb_adc_stream is
 # safely ignored, but we keep the list explicit to avoid surprises.
-SRCS := fpga/top.v fpga/ADC_Model_TB.v fpga/UWB_Serial_Handler.v
+SRCS := fpga/top.v decoder/UWB_Serial_Handler.v
 
 # Intermediate / output artefacts
 JSON := $(DESIGN).json
@@ -59,8 +59,20 @@ prog: $(BIT)
 
 # 5. Simulation (iverilog) — runs the existing testbench
 sim:
-	iverilog -g2012 -o sim_tb fpga/ADC_Model_TB.v && vvp sim_tb
+	iverilog -g2012 -o sim_tb sim/ADC_Model_TB.v && vvp sim_tb
+
+# 6. h5-capture-driven testbench
+#    Step A: convert real ADC capture → hex stimulus + golden expected values
+sim/stim_h5.hex: sine-all-5.h5 sim/extract_h5_stim.py
+	conda run -n base python3 sim/extract_h5_stim.py
+
+#    Step B: compile and run the testbench (depends on Step A)
+sim-h5: sim/stim_h5.hex
+	iverilog -g2012 -o sim_tb_h5 sim/tb_h5.v decoder/UWB_Serial_Handler.v
+	vvp sim_tb_h5
 
 # Clean build artefacts
 clean:
-	rm -f $(JSON) $(CFG) $(BIT) sim_tb tb_adc_stream.vcd
+	rm -f $(JSON) $(CFG) $(BIT) sim_tb tb_adc_stream.vcd \
+	      sim_tb_h5 sim/tb_h5.vcd \
+	      sim/stim_h5.hex sim/expected_ch*.hex
