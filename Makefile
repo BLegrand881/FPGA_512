@@ -71,6 +71,16 @@ sim-h5: sim/stim_h5.hex
 	iverilog -g2012 -o sim_tb_h5 sim/tb_h5.v decoder/UWB_Serial_Handler.v
 	vvp sim_tb_h5
 
+#    Step C: decode serial CSV with receiver.py and compare against golden
+sim/serial_sim_decoded.csv: sim/serial_sim.csv
+	conda run -n base python3 receiver/receiver.py sim/serial_sim.csv \
+	    --clk la_clk --data la_data_0 la_data_1 la_data_2 la_data_3 \
+	    --lanes 0 1 2 3 --edge falling \
+	    -o sim/serial_sim_decoded.csv
+
+sim-compare: sim/serial_sim_decoded.csv sim/stim_h5.hex
+	conda run -n base python3 sim/compare_sim.py
+
 # Clean build artefacts
 clean:
 	rm -f $(JSON) $(CFG) $(BIT) sim_tb tb_adc_stream.vcd \

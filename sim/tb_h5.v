@@ -203,6 +203,22 @@ module tb_h5;
     end
 
     // =========================================================================
+    // Serial CSV dump  (clock + 4 serial lanes at every clock edge)
+    // receiver.py reads this to decode lane_framer frames end-to-end.
+    // =========================================================================
+    integer csv_fd;
+    initial csv_fd = $fopen("sim/serial_sim.csv", "w");
+    initial $fwrite(csv_fd,
+        "Time (s),la_clk,la_data_0,la_data_1,la_data_2,la_data_3\n");
+
+    always @(clk)
+        if (rst_n)
+            $fwrite(csv_fd, "%.12e,%0d,%0d,%0d,%0d,%0d\n",
+                    $realtime * 1e-9,
+                    clk,
+                    serial_lane[0], serial_lane[1], serial_lane[2], serial_lane[3]);
+
+    // =========================================================================
     // Stimulus driver + final report
     // =========================================================================
     integer stim_idx;
@@ -231,8 +247,8 @@ module tb_h5;
             sync_in  = stim_mem[stim_idx][9];
         end
 
-        // ── Drain pipeline: lane_framer needs up to 1584 clocks to emit ──────
-        repeat (400) @(posedge clk);
+        // ── Drain pipeline: 2500 clocks covers remaining lane_framer emission ──
+        repeat (2500) @(posedge clk);
 
         // ── Summary report ────────────────────────────────────────────────────
         $display("");
@@ -253,6 +269,7 @@ module tb_h5;
         else
             $display("RESULT: FAIL  (%0d word mismatches)", err_cnt);
         $display("=============================================================");
+        $fclose(csv_fd);
         $finish;
     end
 
@@ -312,7 +329,7 @@ module tb_h5;
     // Safety timeout
     // =========================================================================
     initial begin
-        #(CLK_PERIOD * (N_CYCLES + 1000));
+        #(CLK_PERIOD * (N_CYCLES + 3000));
         $display("TIMEOUT at %0t ns -- stimulus or drain took too long", $time);
         $finish;
     end
