@@ -3,6 +3,7 @@
 *.cfg
 *.bit
 sim_tb
+sim_tb_h5
 *.vcd
 
 # Large data files
