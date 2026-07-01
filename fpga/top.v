@@ -162,7 +162,7 @@ module top (
         .N_CH         (8),
         .N_ADC_PER_GP (4),
         .ADC_BITS     (12),
-        .ZERO_CYCLES  (13),
+        .ZERO_CYCLES  (11),
         .GROUP_CYCLES (64),
         .N_GROUPS     (16),
         .SAMPS_PER_FR (64),

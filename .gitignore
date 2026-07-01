@@ -10,9 +10,16 @@ sim_tb_h5
 analysis/*.h5
 sine-all-5.h5
 
+# Generated simulation outputs
+sim/serial_sim.csv
+sim/sim_decoded.csv
+sim/*.png
+sine-all-5_decoded.csv
+
 # Claude Code local config (machine-specific)
 .claude/settings.local.json
 CLAUDE_SESSION.md
+HOUBO_SESSION.md
 
 # macOS
 .DS_Store

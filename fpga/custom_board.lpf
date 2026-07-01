@@ -1,0 +1,112 @@
+# =============================================================================
+# custom_board.lpf  —  Lattice ECP5 LFE5U-25F-7BG256I  (BGA256, -7 speed)
+# Custom FPGA Board  —  8-channel ADC receiver + 4-lane serial framer output
+#
+# Pin assignments derived from KiCad netlist "FPGA board.net" (2026-06-29).
+#
+# IO_TYPE notes:
+#   LVCMOS33   — 3.3 V I/O (default for J6 outputs, crystal clock, spare inputs)
+#   CB data/clock pins (B15,B16,C15,C16,J13-J16,K14-K16,H14) share the same
+#   VCCIO bank as the ADC board interface.  If your ADC board uses 1.5 V logic
+#   (same as the ECP5 eval board J32/J33), change those to LVCMOS15.
+#   Check the VCCIO bank assignment in the ECP5 BGA256 pin table if unsure.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Clock — 16 MHz crystal X1 on ball A7 (PT29A/PCLKT0_0, clock-capable)
+# -----------------------------------------------------------------------------
+LOCATE COMP "clk_16m"       SITE "A7";
+IOBUF PORT  "clk_16m"       IO_TYPE=LVCMOS33;
+FREQUENCY PORT "clk_16m"    16.0 MHZ;
+
+# -----------------------------------------------------------------------------
+# CB_ — ADC board data interface via CN1
+# 8 serial data streams, group-boundary pulse, frame sync, 32 MHz clocks
+# K16 = PR26A/PCLKT3_1 (clock-capable — used as source-synchronous decode clock)
+# -----------------------------------------------------------------------------
+LOCATE COMP "cb_d[1]"       SITE "B15";
+LOCATE COMP "cb_d[2]"       SITE "B16";
+LOCATE COMP "cb_d[3]"       SITE "C15";
+LOCATE COMP "cb_d[4]"       SITE "C16";
+LOCATE COMP "cb_d[5]"       SITE "J15";
+LOCATE COMP "cb_d[6]"       SITE "K15";
+LOCATE COMP "cb_d[7]"       SITE "K14";
+LOCATE COMP "cb_d[8]"       SITE "J14";
+
+LOCATE COMP "cb_clk32mhz"   SITE "K16";   # 32 MHz clock IN from ADC board
+LOCATE COMP "cb_read"        SITE "J13";   # next_amps group-boundary pulse
+LOCATE COMP "cb_sync"        SITE "H14";   # frame sync
+
+LOCATE COMP "cb_clkh"        SITE "J16";   # 32 MHz clock OUT to ADC board
+
+IOBUF PORT "cb_d[1]"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_d[2]"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_d[3]"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_d[4]"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_d[5]"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_d[6]"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_d[7]"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_d[8]"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_clk32mhz"    IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_read"         IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_sync"         IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_clkh"         IO_TYPE=LVCMOS33 DRIVE=8;
+
+FREQUENCY PORT "cb_clk32mhz" 32.0 MHZ;
+
+# -----------------------------------------------------------------------------
+# CN1 — spare/stimulation outputs (held low by design)
+# -----------------------------------------------------------------------------
+LOCATE COMP "cb_stim_en"     SITE "G14";
+LOCATE COMP "cb_stim_clk"    SITE "G15";
+LOCATE COMP "cb_stim_start"  SITE "G16";
+LOCATE COMP "cb_stim_chb"    SITE "H15";
+
+IOBUF PORT "cb_stim_en"      IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "cb_stim_clk"     IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "cb_stim_start"   IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "cb_stim_chb"     IO_TYPE=LVCMOS33 DRIVE=4;
+
+# -----------------------------------------------------------------------------
+# CN1 — spare inputs (PULLUP so floating pins don't oscillate)
+# -----------------------------------------------------------------------------
+LOCATE COMP "cb_chip_reset"  SITE "D14";
+LOCATE COMP "cb_ac_in"       SITE "D16";
+LOCATE COMP "cb_imp_test"    SITE "E15";
+LOCATE COMP "cb_fe_reset"    SITE "E16";
+LOCATE COMP "cb_spi_clk"     SITE "E14";
+LOCATE COMP "cb_spi_latch"   SITE "F16";
+LOCATE COMP "cb_spi_dinr"    SITE "F14";
+LOCATE COMP "cb_spi_dinl"    SITE "F15";
+
+IOBUF PORT "cb_chip_reset"   IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "cb_ac_in"        IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "cb_imp_test"     IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "cb_fe_reset"     IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "cb_spi_clk"      IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "cb_spi_latch"    IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "cb_spi_dinr"     IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "cb_spi_dinl"     IO_TYPE=LVCMOS33 PULLMODE=UP;
+
+# -----------------------------------------------------------------------------
+# J6 — framed serial output + bit clock
+#
+#   Pin 3  A15  serial_out[0]  lane 0 (SYNC 0xA35)
+#   Pin 4  A14  serial_out[1]  lane 1 (SYNC 0xB46)
+#   Pin 5  B14  serial_out[2]  lane 2 (SYNC 0xC57)
+#   Pin 6  A13  serial_out[3]  lane 3 (SYNC 0xD68)
+#   Pin 7  A12  serial_clk     32 MHz bit-clock reference
+#
+# Receiver samples serial_out on FALLING edge of serial_clk.
+# -----------------------------------------------------------------------------
+LOCATE COMP "serial_out[0]"  SITE "A15";
+LOCATE COMP "serial_out[1]"  SITE "A14";
+LOCATE COMP "serial_out[2]"  SITE "B14";
+LOCATE COMP "serial_out[3]"  SITE "A13";
+LOCATE COMP "serial_clk"     SITE "A12";
+
+IOBUF PORT "serial_out[0]"   IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "serial_out[1]"   IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "serial_out[2]"   IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "serial_out[3]"   IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "serial_clk"      IO_TYPE=LVCMOS33 DRIVE=8;

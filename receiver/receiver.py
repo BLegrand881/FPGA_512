@@ -446,7 +446,7 @@ def main():
     # For single-lane captures only the active D-channels are populated.
     # ------------------------------------------------------------------
     out_path = Path(args.output) if args.output else in_path.with_suffix("").with_suffix("") \
-        .parent / (in_path.stem + "_decoded.csv")
+        .parent / ("receiver_" + in_path.stem + "_decoded.csv")
 
     # Build per-frame records indexed by cycle_cnt
     frame_records = {}  # cycle_cnt → {col: value}

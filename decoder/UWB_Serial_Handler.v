@@ -30,7 +30,7 @@ module rx_process_mux #(
     parameter int N_CH          = 8,
     parameter int N_ADC_PER_GP  = 4,
     parameter int ADC_BITS      = 12,
-    parameter int ZERO_CYCLES   = 13,
+    parameter int ZERO_CYCLES   = 11,
     parameter int GROUP_CYCLES  = 64,
     parameter int N_GROUPS      = 16,
     parameter int SAMPS_PER_FR  = N_GROUPS * N_ADC_PER_GP,  // 64
@@ -61,7 +61,7 @@ module rx_process_mux #(
     // Stage 1: Per-channel bit deserializer → RX FIFO
     //
     // ADC serial format (per 64-cycle group):
-    //   cycles  0..12 : 13 leading zero cycles  (ZERO_CYCLES)
+    //   cycles  0..10 : 11 leading zero cycles  (ZERO_CYCLES)
     //   cycles 13..60 : 4 ADC × 12 bits, bit-interleaved
     //                   which_adc = (cyc - 13) % 4
     //                   which_bit = (cyc - 13) / 4

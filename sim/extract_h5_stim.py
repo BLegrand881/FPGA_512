@@ -45,11 +45,11 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Parameters matching rx_process_mux (top.v instantiation)
 # ---------------------------------------------------------------------------
-N_FRAMES     = 8          # ADC-frame repetitions to extract
+N_FRAMES     = 80         # ADC-frame repetitions to extract
 N_GROUPS_FR  = 16         # ADC groups per logical frame
 N_GROUPS     = N_FRAMES * N_GROUPS_FR   # 128 total groups
 N_CYCLES     = N_GROUPS * 64            # 8192 stimulus clock cycles
-ZERO_CYCLES  = 13
+ZERO_CYCLES  = 11
 N_ADC_PER_GP = 4
 ADC_BITS     = 12
 GROUP_CYCLES = 64

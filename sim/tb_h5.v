@@ -45,10 +45,10 @@ module tb_h5;
     localparam int N_CH         = 8;
     localparam int N_ADC_PER_GP = 4;
     localparam int ADC_BITS     = 12;
-    localparam int ZERO_CYCLES  = 13;
+    localparam int ZERO_CYCLES  = 11;
     localparam int GROUP_CYCLES = 64;
     localparam int N_GROUPS_FR  = 16;   // DUT's N_GROUPS parameter
-    localparam int N_FRAMES     = 8;    // ADC frames to replay
+    localparam int N_FRAMES     = 80;   // ADC frames to replay
     localparam int N_GROUPS     = N_FRAMES * N_GROUPS_FR;    // 128 groups
     localparam int N_CYCLES     = N_GROUPS * GROUP_CYCLES;   // 8192 stim cycles
     localparam int EXP_PER_CH   = N_GROUPS * N_ADC_PER_GP;  // 512 words/channel
@@ -96,7 +96,7 @@ module tb_h5;
         .N_CH        (8),
         .N_ADC_PER_GP(4),
         .ADC_BITS    (12),
-        .ZERO_CYCLES (13),
+        .ZERO_CYCLES (11),
         .GROUP_CYCLES(64),
         .N_GROUPS    (16),
         .SAMPS_PER_FR(64),
@@ -248,7 +248,7 @@ module tb_h5;
         end
 
         // ── Drain pipeline: 2500 clocks covers remaining lane_framer emission ──
-        repeat (2500) @(posedge clk);
+        repeat (8000) @(posedge clk);
 
         // ── Summary report ────────────────────────────────────────────────────
         $display("");
@@ -329,7 +329,7 @@ module tb_h5;
     // Safety timeout
     // =========================================================================
     initial begin
-        #(CLK_PERIOD * (N_CYCLES + 3000));
+        #(CLK_PERIOD * (N_CYCLES + 10000));
         $display("TIMEOUT at %0t ns -- stimulus or drain took too long", $time);
         $finish;
     end
