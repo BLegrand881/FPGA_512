@@ -65,7 +65,20 @@ module top (
 
     // J6 — framed serial output (4 lanes + bit clock)
     output wire [3:0]  serial_out,   // lanes 0–3, MSB-first, 1 bit per clock
-    output wire        serial_clk    // 32 MHz bit clock reference for receiver
+    output wire        serial_clk,   // 32 MHz bit clock reference for receiver
+
+    // FT600 USB FIFO (U1) — held inactive; not yet implemented
+    // Control outputs must be driven high (active-low, inactive=1) to prevent
+    // the FT600 from initiating spurious transfers on power-up.
+    input  wire        ft600_clk,    // G1  — 100 MHz clock from FT600 (unused)
+    input  wire        ft600_txe_n,  // C1  — FT600 TX empty flag (unused)
+    input  wire        ft600_rxf_n,  // C2  — FT600 RX full flag (unused)
+    output wire        ft600_wr_n,   // C3  — write strobe, held high (inactive)
+    output wire        ft600_rd_n,   // B1  — read strobe, held high (inactive)
+    output wire        ft600_oe_n,   // B2  — output enable, held high (inactive)
+    output wire        ft600_be0,    // E3  — byte enable 0, held low (inactive)
+    output wire        ft600_be1,    // D3  — byte enable 1, held low (inactive)
+    input  wire [15:0] ft600_d       // FT600 data bus (inputs only while inactive)
 );
 
     // -------------------------------------------------------------------------
@@ -100,7 +113,18 @@ module top (
     assign cb_stim_chb   = 1'b0;
 
     // -------------------------------------------------------------------------
-    // 4. Unused input anchor — keeps IO buffers in netlist for PULLMODE in LPF
+    // 4. FT600 USB FIFO — held inactive
+    //    WR_N, RD_N, OE_N are active-low; drive high to disable all transfers.
+    //    BE0/BE1 are byte-enables; hold low (both bytes invalid while inactive).
+    // -------------------------------------------------------------------------
+    assign ft600_wr_n = 1'b1;
+    assign ft600_rd_n = 1'b1;
+    assign ft600_oe_n = 1'b1;
+    assign ft600_be0  = 1'b0;
+    assign ft600_be1  = 1'b0;
+
+    // -------------------------------------------------------------------------
+    // 5. Unused input anchor — keeps IO buffers in netlist for PULLMODE in LPF
     // -------------------------------------------------------------------------
     wire _unused_ok = &{1'b0,
         pll_locked,
@@ -111,11 +135,15 @@ module top (
         cb_spi_clk,
         cb_spi_latch,
         cb_spi_dinr,
-        cb_spi_dinl
+        cb_spi_dinl,
+        ft600_clk,
+        ft600_txe_n,
+        ft600_rxf_n,
+        ft600_d
     };
 
     // -------------------------------------------------------------------------
-    // 5. Reset — synchronous de-assertion in cb_clk32mhz domain
+    // 6. Reset — synchronous de-assertion in cb_clk32mhz domain
     //    Held asserted until cb_clk32mhz is toggling (2 cycles minimum).
     //    No PLL lock dependency since cb_clk32mhz comes from the ADC board.
     // -------------------------------------------------------------------------
@@ -126,7 +154,7 @@ module top (
     wire rst_n = ~rst_pipe[3];
 
     // -------------------------------------------------------------------------
-    // 6. RX — 8-channel ADC deserializer → 8:4 TDM mux
+    // 7. RX — 8-channel ADC deserializer → 8:4 TDM mux
     //
     //    cb_d[k] maps directly to decoder channel k-1 (data_in[k-1]).
     //    cb_read  → next_amps (group-boundary reset, broadcast to all 8 ch)
@@ -161,7 +189,7 @@ module top (
     wire _chsel_unused = &{1'b0, out_chsel};
 
     // -------------------------------------------------------------------------
-    // 7. Lane framers — 4 independent MSB-first serial output streams
+    // 8. Lane framers — 4 independent MSB-first serial output streams
     //
     //    Frame format per lane (132 words × 12 bits = 1584 bit-clock cycles):
     //      [SYNC(12b)][LANE_ID(12b)][CYCLE_CNT(12b)][DATA×128][CRC-12(12b)]
