@@ -5,8 +5,9 @@
 #
 # Targets:
 #   make              — build bitstream for ECP5-5G eval board (default)
-#   make synth-custom — synthesise for custom board (LFE5U-25F BGA256)
-#   make prog-custom  — program custom board via J2 JTAG
+#   make synth-custom  — synthesise for custom board (LFE5U-25F BGA256)
+#   make prog-custom   — load to SRAM via J2 JTAG (volatile)
+#   make flash-custom  — write to SPI flash via Pico DirtyJTAG (persistent)
 # =============================================================================
 
 OSS_CAD  := /opt/oss-cad-suite/bin
@@ -42,7 +43,7 @@ CFG  := $(DESIGN).cfg
 BIT  := $(DESIGN).bit
 
 # -----------------------------------------------------------------------------
-.PHONY: all synth pnr pack prog sim clean synth-custom prog-custom
+.PHONY: all synth pnr pack prog sim clean synth-custom prog-custom flash-custom
 
 all: $(BIT)
 
@@ -120,10 +121,15 @@ $(CUSTOM_BIT): $(CUSTOM_CFG)
 synth-custom: $(CUSTOM_BIT)
 	@echo "Custom board bitstream ready: $(CUSTOM_BIT)"
 
-# Program custom board via J2 JTAG header
-# openFPGALoader auto-detects ECP5 on JTAG; specify --cable if needed.
+# Program custom board via J2 JTAG — volatile SRAM load (lost on power cycle)
 prog-custom: $(CUSTOM_BIT)
 	$(OSS_CAD)/openFPGALoader $(CUSTOM_BIT)
+
+# Flash custom board to SPI flash via Raspberry Pi Pico DirtyJTAG
+# Bitstream survives power cycle; FPGA loads from flash on every boot.
+# DirtyJTAG firmware: https://github.com/jeanthom/DirtyJTAG
+flash-custom: $(CUSTOM_BIT)
+	$(OSS_CAD)/openFPGALoader -c dirtyJtag --fpga-part LFE5U-25F -f $(CUSTOM_BIT)
 
 # Clean build artefacts
 clean:
