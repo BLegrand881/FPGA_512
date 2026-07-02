@@ -98,10 +98,12 @@ module top (
 
     // -------------------------------------------------------------------------
     // 2. Clock outputs
-    //    cb_clkh    : PLL 32 MHz → ADC board (ADC board uses this to launch data)
+    //    cb_clkh    : PLL 32 MHz → ADC board — gated LOW until PLL locks.
+    //                 Prevents the ADC board from receiving a glitchy/wrong-
+    //                 frequency clock during the ~100 µs PLL acquisition time.
     //    serial_clk : cb_clk32mhz passthrough → J6 Pin 7 (bit-clock reference)
     // -------------------------------------------------------------------------
-    assign cb_clkh    = clk32M;
+    assign cb_clkh    = pll_locked ? clk32M : 1'b0;
     assign serial_clk = cb_clk32mhz;
 
     // -------------------------------------------------------------------------
@@ -127,7 +129,6 @@ module top (
     // 5. Unused input anchor — keeps IO buffers in netlist for PULLMODE in LPF
     // -------------------------------------------------------------------------
     wire _unused_ok = &{1'b0,
-        pll_locked,
         cb_chip_reset,
         cb_ac_in,
         cb_imp_test,
@@ -144,12 +145,15 @@ module top (
 
     // -------------------------------------------------------------------------
     // 6. Reset — synchronous de-assertion in cb_clk32mhz domain
-    //    Held asserted until cb_clk32mhz is toggling (2 cycles minimum).
-    //    No PLL lock dependency since cb_clk32mhz comes from the ADC board.
+    //    rst_pipe shifts in 0s only after pll_locked is asserted, so the
+    //    decoder stays in reset until:
+    //      (a) PLL has locked (cb_clkh is stable 32 MHz to ADC board), AND
+    //      (b) cb_clk32mhz has been toggling for at least 4 cycles
+    //          (confirming the ADC board is responding to our clock).
     // -------------------------------------------------------------------------
     reg [3:0] rst_pipe = 4'hF;
     always @(posedge cb_clk32mhz) begin
-        rst_pipe <= {rst_pipe[2:0], 1'b0};
+        rst_pipe <= {rst_pipe[2:0], ~pll_locked};
     end
     wire rst_n = ~rst_pipe[3];
 
