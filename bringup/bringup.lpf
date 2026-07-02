@@ -3,6 +3,15 @@
 # Pin assignments from KiCad netlist "FPGA board.net"
 # =============================================================================
 
+# 16 MHz crystal — always present, used for blink indicator
+LOCATE COMP "clk_16m"     SITE "A7";
+IOBUF PORT  "clk_16m"     IO_TYPE=LVCMOS33;
+FREQUENCY PORT "clk_16m"  16.0 MHZ;
+
+# Status LED — D1 blinks ~1 Hz to confirm bitstream loaded
+LOCATE COMP "led_power"   SITE "P16";
+IOBUF PORT  "led_power"   IO_TYPE=LVCMOS33 DRIVE=4;
+
 # CN1 — ADC board inputs
 LOCATE COMP "cb_d1"        SITE "B15";
 LOCATE COMP "cb_clk32mhz"  SITE "K16";

@@ -15,11 +15,17 @@
 // =============================================================================
 
 module top (
+    input  wire        clk_16m,      // A7  — 16 MHz crystal (always present)
+
     // CN1 — ADC board inputs
     input  wire        cb_d1,        // B15 — serial data lane 1
     input  wire        cb_clk32mhz,  // K16 — 32 MHz bit clock from ADC board
     input  wire        cb_read,      // J13 — next_amps group-boundary pulse
     input  wire        cb_sync,      // H14 — frame sync
+
+    // Status LED — blinks from crystal so you can confirm the bitstream loaded
+    // without plugging in the ADC board
+    output wire        led_power,    // P16 → D1: ~1 Hz blink from 16 MHz crystal
 
     // J6 — loopback outputs
     output wire        j6_d1,        // A15 — pin 3
@@ -28,6 +34,13 @@ module top (
     output wire        j6_clk,       // A13 — pin 6
     output wire        j6_clkref     // A12 — pin 7
 );
+
+    // 24-bit counter at 16 MHz → toggles at 16e6/2^24 ≈ 0.95 Hz
+    reg [23:0] ctr = 24'd0;
+    always @(posedge clk_16m)
+        ctr <= ctr + 1'b1;
+
+    assign led_power = ctr[23];   // MSB = ~1 Hz blink
 
     assign j6_d1     = cb_d1;
     assign j6_read   = cb_read;
