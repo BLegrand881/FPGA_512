@@ -1,0 +1,35 @@
+# =============================================================================
+# bringup.lpf  —  LFE5U-25F-7BG256I bringup loopback
+# Pin assignments from KiCad netlist "FPGA board.net"
+# =============================================================================
+
+# CN1 — ADC board inputs
+LOCATE COMP "cb_d1"        SITE "B15";
+LOCATE COMP "cb_clk32mhz"  SITE "K16";
+LOCATE COMP "cb_read"      SITE "J13";
+LOCATE COMP "cb_sync"      SITE "H14";
+
+IOBUF PORT "cb_d1"        IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_clk32mhz"  IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_read"      IO_TYPE=LVCMOS33;
+IOBUF PORT "cb_sync"      IO_TYPE=LVCMOS33;
+
+FREQUENCY PORT "cb_clk32mhz" 32.0 MHZ;
+
+# J6 — loopback outputs
+#   Pin 3  A15  D1 (data lane 1)
+#   Pin 4  A14  READ (next_amps)
+#   Pin 5  B14  SYNC
+#   Pin 6  A13  CLK
+#   Pin 7  A12  CLK reference
+LOCATE COMP "j6_d1"      SITE "A15";
+LOCATE COMP "j6_read"    SITE "A14";
+LOCATE COMP "j6_sync"    SITE "B14";
+LOCATE COMP "j6_clk"     SITE "A13";
+LOCATE COMP "j6_clkref"  SITE "A12";
+
+IOBUF PORT "j6_d1"      IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "j6_read"    IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "j6_sync"    IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "j6_clk"     IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "j6_clkref"  IO_TYPE=LVCMOS33 DRIVE=8;

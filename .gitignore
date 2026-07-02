@@ -24,3 +24,6 @@ HOUBO_SESSION.md
 # macOS
 .DS_Store
 *.lnk
+bringup/*.json
+bringup/*.cfg
+bringup/*.bit
