@@ -13,6 +13,17 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
+# Status LEDs — common-cathode to GND, anode via series resistor from FPGA
+#   D1 (P16, PR35A) — solid on when PLL locked ("FPGA alive")
+#   D2 (M13, PR35C) — blinks when decoded frames are flowing ("data active")
+#   Drive HIGH = LED on, LOW = LED off
+# -----------------------------------------------------------------------------
+LOCATE COMP "led_power"      SITE "P16";
+LOCATE COMP "led_data"       SITE "M13";
+IOBUF PORT  "led_power"      IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT  "led_data"       IO_TYPE=LVCMOS33 DRIVE=4;
+
+# -----------------------------------------------------------------------------
 # Clock — 16 MHz crystal X1 on ball A7 (PT29A/PCLKT0_0, clock-capable)
 # -----------------------------------------------------------------------------
 LOCATE COMP "clk_16m"       SITE "A7";

@@ -78,7 +78,11 @@ module top (
     output wire        ft600_oe_n,   // B2  — output enable, held high (inactive)
     output wire        ft600_be0,    // E3  — byte enable 0, held low (inactive)
     output wire        ft600_be1,    // D3  — byte enable 1, held low (inactive)
-    input  wire [15:0] ft600_d       // FT600 data bus (inputs only while inactive)
+    input  wire [15:0] ft600_d,      // FT600 data bus (inputs only while inactive)
+
+    // Status LEDs (common-cathode to GND, anode via series resistor from FPGA)
+    output wire        led_power,    // P16 → D1: solid on when PLL locked
+    output wire        led_data      // M13 → D2: blinks when data is flowing
 );
 
     // -------------------------------------------------------------------------
@@ -126,7 +130,25 @@ module top (
     assign ft600_be1  = 1'b0;
 
     // -------------------------------------------------------------------------
-    // 5. Unused input anchor — keeps IO buffers in netlist for PULLMODE in LPF
+    // 5. Status LEDs
+    //    led_power : on whenever PLL is locked (solid = FPGA running)
+    //    led_data  : stretches any out_valid pulse to ~0.1 s so it's visible.
+    //                Driven in the cb_clk32mhz domain (ADC clock).
+    //                Stretch counter: 32 MHz × 2^22 ≈ 131 ms per blink.
+    // -------------------------------------------------------------------------
+    assign led_power = pll_locked;
+
+    reg [21:0] data_stretch = 22'd0;
+    always @(posedge cb_clk32mhz) begin
+        if (|out_valid)
+            data_stretch <= 22'h3FFFFF;   // reload to full count on any valid word
+        else if (data_stretch != 0)
+            data_stretch <= data_stretch - 1'b1;
+    end
+    assign led_data = (data_stretch != 0);
+
+    // -------------------------------------------------------------------------
+    // 6. Unused input anchor — keeps IO buffers in netlist for PULLMODE in LPF
     // -------------------------------------------------------------------------
     wire _unused_ok = &{1'b0,
         cb_chip_reset,
@@ -144,7 +166,7 @@ module top (
     };
 
     // -------------------------------------------------------------------------
-    // 6. Reset — synchronous de-assertion in cb_clk32mhz domain
+    // 7. Reset — synchronous de-assertion in cb_clk32mhz domain
     //    rst_pipe shifts in 0s only after pll_locked is asserted, so the
     //    decoder stays in reset until:
     //      (a) PLL has locked (cb_clkh is stable 32 MHz to ADC board), AND
@@ -158,7 +180,7 @@ module top (
     wire rst_n = ~rst_pipe[3];
 
     // -------------------------------------------------------------------------
-    // 7. RX — 8-channel ADC deserializer → 8:4 TDM mux
+    // 8. RX — 8-channel ADC deserializer → 8:4 TDM mux
     //
     //    cb_d[k] maps directly to decoder channel k-1 (data_in[k-1]).
     //    cb_read  → next_amps (group-boundary reset, broadcast to all 8 ch)
@@ -193,7 +215,7 @@ module top (
     wire _chsel_unused = &{1'b0, out_chsel};
 
     // -------------------------------------------------------------------------
-    // 8. Lane framers — 4 independent MSB-first serial output streams
+    // 9. Lane framers — 4 independent MSB-first serial output streams
     //
     //    Frame format per lane (132 words × 12 bits = 1584 bit-clock cycles):
     //      [SYNC(12b)][LANE_ID(12b)][CYCLE_CNT(12b)][DATA×128][CRC-12(12b)]
