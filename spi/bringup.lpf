@@ -1,0 +1,50 @@
+# =============================================================================
+# bringup.lpf  —  LFE5U-25F-7BG256I bringup loopback + SPI controller
+# Pin assignments from KiCad netlist "FPGA board.net"
+# =============================================================================
+
+# 16 MHz crystal — always present, used for blink indicator
+LOCATE COMP "clk_16m"     SITE "A7";
+IOBUF PORT  "clk_16m"     IO_TYPE=LVCMOS33;
+FREQUENCY PORT "clk_16m"  16.0 MHZ;
+
+# Status LED — D1 blinks ~1 Hz to confirm bitstream loaded
+LOCATE COMP "led_power"   SITE "P16";
+IOBUF PORT  "led_power"   IO_TYPE=LVCMOS33 DRIVE=4;
+
+# CN1 — ADC board inputs (UPDATED: Changed from LVCMOS33 to LVCMOS15)
+LOCATE COMP "cb_d1"        SITE "B15";
+LOCATE COMP "cb_clk32mhz"  SITE "K16";
+LOCATE COMP "cb_read"      SITE "J13";
+LOCATE COMP "cb_sync"      SITE "H14";
+IOBUF PORT "cb_d1"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_clk32mhz"  IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_read"      IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_sync"      IO_TYPE=LVCMOS15;
+FREQUENCY PORT "cb_clk32mhz" 32.0 MHZ;
+
+# J6 — loopback outputs
+LOCATE COMP "j6_d1"      SITE "A15";
+LOCATE COMP "j6_read"    SITE "A14";
+LOCATE COMP "j6_sync"    SITE "B14";
+LOCATE COMP "j6_clk"     SITE "A13";
+LOCATE COMP "j6_clkref"  SITE "A12";
+IOBUF PORT "j6_d1"      IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "j6_read"    IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "j6_sync"    IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "j6_clk"     IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "j6_clkref"  IO_TYPE=LVCMOS33 DRIVE=8;
+
+# Trigger Button input (3.3V Active-Low)
+LOCATE COMP "btn_trigger" SITE "N13";
+IOBUF PORT  "btn_trigger" IO_TYPE=LVCMOS33;
+
+# SPI Lines (1.5V outputs)
+LOCATE COMP "spi_sig1"    SITE "F15";
+LOCATE COMP "spi_sig2"    SITE "F14";
+LOCATE COMP "spi_clk"     SITE "E14";
+LOCATE COMP "spi_latch"   SITE "F16";
+IOBUF PORT  "spi_sig1"    IO_TYPE=LVCMOS15;
+IOBUF PORT  "spi_sig2"    IO_TYPE=LVCMOS15;
+IOBUF PORT  "spi_clk"     IO_TYPE=LVCMOS15;
+IOBUF PORT  "spi_latch"   IO_TYPE=LVCMOS15;
