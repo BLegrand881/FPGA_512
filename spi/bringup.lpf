@@ -37,7 +37,7 @@ IOBUF PORT "j6_clkref"  IO_TYPE=LVCMOS33 DRIVE=8;
 
 # Trigger Button input (3.3V Active-Low)
 LOCATE COMP "btn_trigger" SITE "N13";
-IOBUF PORT  "btn_trigger" IO_TYPE=LVCMOS33;
+IOBUF PORT  "btn_trigger" PULLMODE=UP IO_TYPE=LVCMOS33;
 
 # SPI Lines (1.5V outputs)
 LOCATE COMP "spi_sig1"    SITE "F15";
