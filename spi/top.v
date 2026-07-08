@@ -16,6 +16,7 @@ module top (
 
     // Status LED
     output wire        led_power,    // P16 → D1: ~1 Hz blink from 16 MHz crystal
+    output wire        led_trigger,  // P15 → D2: High when trigger button is pressed
 
     // J6 — loopback outputs
     output wire        j6_d1,        // A15 — pin 3
@@ -40,6 +41,7 @@ module top (
         ctr <= ctr + 1'b1;
 
     assign led_power = ctr[23];
+    // assign led_trigger = ~btn_trigger;
 
     assign j6_d1     = cb_d1;
     assign j6_read   = cb_read;
@@ -96,6 +98,8 @@ module top (
                     out_sig1            <= 1'b0; 
                     out_sig2            <= 1'b0;
                     out_clk             <= 1'b0;
+
+                    led_trigger <= 1'b1; // Turn on trigger LED to indicate running state
                     
                     // Reset our execution counters to zero
                     clk_half_period_ctr <= 0;
@@ -170,9 +174,19 @@ module top (
                 out_sig1  <= 1'b0; // Keep signal line 1 low permanently
                 out_sig2  <= 1'b0; // Keep signal line 2 low permanently
                 out_clk <= 1'b0; // Ensure clock remains locked low
+                led_trigger <= 1'b0; // Turn off trigger LED to indicate completion
+
                 
                 // No state transition out of here. The system sits here until 
                 // the FPGA board is power-cycled or reconfigured.
+                if (btn_trigger == 1'b1) begin
+                    
+                    // If the button is released, we can optionally reset to idle.
+                    // Uncomment the following line if you want to allow re-triggering:
+                    state <= ST_IDLE;
+
+                    
+                end
             end
             
             default: state <= ST_IDLE;

@@ -9,8 +9,11 @@ IOBUF PORT  "clk_16m"     IO_TYPE=LVCMOS33;
 FREQUENCY PORT "clk_16m"  16.0 MHZ;
 
 # Status LED — D1 blinks ~1 Hz to confirm bitstream loaded
-LOCATE COMP "led_power"   SITE "P16";
+LOCATE COMP "led_power"   SITE "R16";
 IOBUF PORT  "led_power"   IO_TYPE=LVCMOS33 DRIVE=4;
+
+LOCATE COMP "led_trigger"   SITE "N14";
+IOBUF PORT  "led_trigger"   IO_TYPE=LVCMOS33 DRIVE=4;
 
 # CN1 — ADC board inputs (UPDATED: Changed from LVCMOS33 to LVCMOS15)
 LOCATE COMP "cb_d1"        SITE "B15";
