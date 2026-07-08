@@ -1,30 +1,41 @@
-OSS_CAD := /opt/oss-cad-suite/bin
-YOSYS   := $(OSS_CAD)/yosys
-NEXTPNR := $(OSS_CAD)/nextpnr-ecp5
-ECPPACK := $(OSS_CAD)/ecppack
+# Toolchain binaries
+YOSYS       := yosys
+NEXTPNR     := nextpnr-ecp5
+ECPPACK     := ecppack
+PROGRAMMER  := openFPGALoader
 
-DESIGN  := top_bringup
-LPF     := bringup.lpf
-JSON    := $(DESIGN).json
-CFG     := $(DESIGN).cfg
-BIT     := $(DESIGN).bit
+# Design files
+DESIGN      := top
+LPF         := bringup.lpf
 
-.PHONY: all flash clean
+# Intermediate and output files
+JSON        := $(DESIGN).json
+CFG         := $(DESIGN).config
+BIT         := $(DESIGN).bit
 
+.PHONY: all prog clean
+
+# Default target: builds the bitstream
 all: $(BIT)
 
+# 1. Synthesis (Yosys)
 $(JSON): $(DESIGN).v
-	$(YOSYS) -p "read_verilog $(DESIGN).v; synth_ecp5 -top top -json $@"
+	$(YOSYS) -p "read_verilog $(DESIGN).v; synth_ecp5 -top $(DESIGN) -json $@"
 
+# 2. Place & Route (nextpnr-ecp5 for LFE5U-25F CABGA256)
 $(CFG): $(JSON) $(LPF)
-	$(NEXTPNR) --25k --package CABGA256 --speed 7 \
-	  --lpf $(LPF) --json $(JSON) --textcfg $@
+	$(NEXTPNR) --25k --package CABGA256 --json $(JSON) --lpf $(LPF) --textcfg $@
 
+# 3. Pack Bitstream (ecppack)
 $(BIT): $(CFG)
-	$(ECPPACK) --compress $(CFG) $@
+	$(ECPPACK) --spimode fast-read $(CFG) $@
 
-flash: $(BIT)
-	$(OSS_CAD)/openFPGALoader -c dirtyJtag --fpga-part LFE5U-25F -f $(BIT)
+# 4. Program directly to SPI Flash using DirtyJTAG
+prog: $(BIT)
+	$(PROGRAMMER) -c dirtyJtag --fpga-part LFE5U-25F -f $(BIT)
 
+# Windows-friendly cleanup rule
 clean:
-	rm -f $(JSON) $(CFG) $(BIT)
+	@if exist $(JSON) del /f $(JSON)
+	@if exist $(CFG) del /f $(CFG)
+	@if exist $(BIT) del /f $(BIT)
