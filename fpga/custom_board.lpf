@@ -50,18 +50,18 @@ LOCATE COMP "cb_sync"        SITE "H14";   # frame sync
 
 LOCATE COMP "cb_clkh"        SITE "J16";   # 32 MHz clock OUT to ADC board
 
-IOBUF PORT "cb_d[1]"        IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_d[2]"        IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_d[3]"        IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_d[4]"        IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_d[5]"        IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_d[6]"        IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_d[7]"        IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_d[8]"        IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_clk32mhz"    IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_read"         IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_sync"         IO_TYPE=LVCMOS33;
-IOBUF PORT "cb_clkh"         IO_TYPE=LVCMOS33 DRIVE=8;
+IOBUF PORT "cb_d[1]"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[2]"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[3]"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[4]"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[5]"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[6]"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[7]"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[8]"        IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_clk32mhz"    IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_read"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_sync"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_clkh"         IO_TYPE=LVCMOS15 DRIVE=8;
 
 FREQUENCY PORT "cb_clk32mhz" 32.0 MHZ;
 
@@ -73,10 +73,10 @@ LOCATE COMP "cb_stim_clk"    SITE "G15";
 LOCATE COMP "cb_stim_start"  SITE "G16";
 LOCATE COMP "cb_stim_chb"    SITE "H15";
 
-IOBUF PORT "cb_stim_en"      IO_TYPE=LVCMOS33 DRIVE=4;
-IOBUF PORT "cb_stim_clk"     IO_TYPE=LVCMOS33 DRIVE=4;
-IOBUF PORT "cb_stim_start"   IO_TYPE=LVCMOS33 DRIVE=4;
-IOBUF PORT "cb_stim_chb"     IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT "cb_stim_en"      IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_stim_clk"     IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_stim_start"   IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_stim_chb"     IO_TYPE=LVCMOS15 DRIVE=4;
 
 # -----------------------------------------------------------------------------
 # CN1 — spare inputs (PULLUP so floating pins don't oscillate)
@@ -90,14 +90,14 @@ LOCATE COMP "cb_spi_latch"   SITE "F16";
 LOCATE COMP "cb_spi_dinr"    SITE "F14";
 LOCATE COMP "cb_spi_dinl"    SITE "F15";
 
-IOBUF PORT "cb_chip_reset"   IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "cb_ac_in"        IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "cb_imp_test"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "cb_fe_reset"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "cb_spi_clk"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "cb_spi_latch"    IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "cb_spi_dinr"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "cb_spi_dinl"     IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "cb_chip_reset"   IO_TYPE=LVCMOS15 PULLMODE=UP;
+IOBUF PORT "cb_ac_in"        IO_TYPE=LVCMOS15 PULLMODE=UP;
+IOBUF PORT "cb_imp_test"     IO_TYPE=LVCMOS15 PULLMODE=UP;
+IOBUF PORT "cb_fe_reset"     IO_TYPE=LVCMOS15 PULLMODE=UP;
+IOBUF PORT "cb_spi_clk"      IO_TYPE=LVCMOS15 PULLMODE=UP;
+IOBUF PORT "cb_spi_latch"    IO_TYPE=LVCMOS15 PULLMODE=UP;
+IOBUF PORT "cb_spi_dinr"     IO_TYPE=LVCMOS15 PULLMODE=UP;
+IOBUF PORT "cb_spi_dinl"     IO_TYPE=LVCMOS15 PULLMODE=UP;
 
 # -----------------------------------------------------------------------------
 # J6 — framed serial output + bit clock
@@ -123,18 +123,17 @@ IOBUF PORT "serial_out[3]"   IO_TYPE=LVCMOS33 DRIVE=8;
 IOBUF PORT "serial_clk"      IO_TYPE=LVCMOS33 DRIVE=8;
 
 # -----------------------------------------------------------------------------
-# FT600 USB FIFO (U1) — control outputs held inactive, data bus as inputs
-# All left-side (PL) bank pins, 3.3 V (FT600 is 3.3 V device)
-# WR_N, RD_N, OE_N driven high by FPGA; BE0/BE1 driven low.
+# FT600 USB FIFO (U1) — 16-bit synchronous FIFO, 100 MHz
+# All PL-bank pins, VCCIO = 2.5V → LVCMOS25
 # -----------------------------------------------------------------------------
-LOCATE COMP "ft600_clk"      SITE "G1";    # FT600 clock out → FPGA (input, unused)
-LOCATE COMP "ft600_txe_n"    SITE "C1";    # TX empty flag (input)
-LOCATE COMP "ft600_rxf_n"    SITE "C2";    # RX full flag (input)
-LOCATE COMP "ft600_wr_n"     SITE "C3";    # write strobe output → held high
-LOCATE COMP "ft600_rd_n"     SITE "B1";    # read strobe output → held high
-LOCATE COMP "ft600_oe_n"     SITE "B2";    # output enable output → held high
-LOCATE COMP "ft600_be0"      SITE "E3";    # byte enable 0 output → held low
-LOCATE COMP "ft600_be1"      SITE "D3";    # byte enable 1 output → held low
+LOCATE COMP "ft600_clk"      SITE "G1";
+LOCATE COMP "ft600_txe_n"    SITE "C1";
+LOCATE COMP "ft600_rxf_n"    SITE "C2";
+LOCATE COMP "ft600_wr_n"     SITE "C3";
+LOCATE COMP "ft600_rd_n"     SITE "B1";
+LOCATE COMP "ft600_oe_n"     SITE "B2";
+LOCATE COMP "ft600_be0"      SITE "E3";
+LOCATE COMP "ft600_be1"      SITE "D3";
 
 LOCATE COMP "ft600_d[0]"     SITE "G5";
 LOCATE COMP "ft600_d[1]"     SITE "F1";
@@ -153,27 +152,29 @@ LOCATE COMP "ft600_d[13]"    SITE "F3";
 LOCATE COMP "ft600_d[14]"    SITE "E2";
 LOCATE COMP "ft600_d[15]"    SITE "F2";
 
-IOBUF PORT "ft600_clk"       IO_TYPE=LVCMOS33;
-IOBUF PORT "ft600_txe_n"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_rxf_n"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_wr_n"      IO_TYPE=LVCMOS33 DRIVE=4;
-IOBUF PORT "ft600_rd_n"      IO_TYPE=LVCMOS33 DRIVE=4;
-IOBUF PORT "ft600_oe_n"      IO_TYPE=LVCMOS33 DRIVE=4;
-IOBUF PORT "ft600_be0"       IO_TYPE=LVCMOS33 DRIVE=4;
-IOBUF PORT "ft600_be1"       IO_TYPE=LVCMOS33 DRIVE=4;
-IOBUF PORT "ft600_d[0]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[1]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[2]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[3]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[4]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[5]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[6]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[7]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[8]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[9]"      IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[10]"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[11]"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[12]"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[13]"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[14]"     IO_TYPE=LVCMOS33 PULLMODE=UP;
-IOBUF PORT "ft600_d[15]"     IO_TYPE=LVCMOS33 PULLMODE=UP;
+IOBUF PORT "ft600_clk"       IO_TYPE=LVCMOS25;
+IOBUF PORT "ft600_txe_n"     IO_TYPE=LVCMOS25 PULLMODE=UP;
+IOBUF PORT "ft600_rxf_n"     IO_TYPE=LVCMOS25 PULLMODE=UP;
+IOBUF PORT "ft600_wr_n"      IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_rd_n"      IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_oe_n"      IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_be0"       IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_be1"       IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_d[0]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[1]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[2]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[3]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[4]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[5]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[6]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[7]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[8]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[9]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[10]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[11]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[12]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[13]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[14]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[15]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+
+FREQUENCY PORT "ft600_clk"   100.0 MHZ;

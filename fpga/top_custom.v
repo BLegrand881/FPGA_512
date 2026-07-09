@@ -67,18 +67,16 @@ module top (
     output wire [3:0]  serial_out,   // lanes 0–3, MSB-first, 1 bit per clock
     output wire        serial_clk,   // 32 MHz bit clock reference for receiver
 
-    // FT600 USB FIFO (U1) — held inactive; not yet implemented
-    // Control outputs must be driven high (active-low, inactive=1) to prevent
-    // the FT600 from initiating spurious transfers on power-up.
-    input  wire        ft600_clk,    // G1  — 100 MHz clock from FT600 (unused)
-    input  wire        ft600_txe_n,  // C1  — FT600 TX empty flag (unused)
-    input  wire        ft600_rxf_n,  // C2  — FT600 RX full flag (unused)
-    output wire        ft600_wr_n,   // C3  — write strobe, held high (inactive)
-    output wire        ft600_rd_n,   // B1  — read strobe, held high (inactive)
-    output wire        ft600_oe_n,   // B2  — output enable, held high (inactive)
-    output wire        ft600_be0,    // E3  — byte enable 0, held low (inactive)
-    output wire        ft600_be1,    // D3  — byte enable 1, held low (inactive)
-    input  wire [15:0] ft600_d,      // FT600 data bus (inputs only while inactive)
+    // FT600 USB FIFO (U1) — 16-bit synchronous FIFO, 100 MHz
+    input  wire        ft600_clk,    // G1  — 100 MHz clock from FT600
+    input  wire        ft600_txe_n,  // C1  — TX buffer not full (low = can write)
+    input  wire        ft600_rxf_n,  // C2  — RX data available (unused)
+    output wire        ft600_wr_n,   // C3  — write strobe (active low)
+    output wire        ft600_rd_n,   // B1  — read strobe (active low)
+    output wire        ft600_oe_n,   // B2  — output enable (active low)
+    output wire        ft600_be0,    // E3  — byte enable 0
+    output wire        ft600_be1,    // D3  — byte enable 1
+    inout  wire [15:0] ft600_d,      // FT600 16-bit bidirectional data bus
 
     // Status LEDs (common-cathode to GND, anode via series resistor from FPGA)
     output wire        led_power,    // P16 → D1: solid on when PLL locked
@@ -119,15 +117,89 @@ module top (
     assign cb_stim_chb   = 1'b0;
 
     // -------------------------------------------------------------------------
-    // 4. FT600 USB FIFO — held inactive
-    //    WR_N, RD_N, OE_N are active-low; drive high to disable all transfers.
-    //    BE0/BE1 are byte-enables; hold low (both bytes invalid while inactive).
+    // 4. FT600 USB FIFO — ADC data bridge
+    //    Packs 12-bit ADC words into 16-bit transfers via async FIFO
+    //    (32 MHz write → 100 MHz read), then streams to FT600.
+    //    Word format: [3:0]=lane, [15:4]=ADC sample (12-bit)
     // -------------------------------------------------------------------------
-    assign ft600_wr_n = 1'b1;
-    assign ft600_rd_n = 1'b1;
-    assign ft600_oe_n = 1'b1;
-    assign ft600_be0  = 1'b0;
-    assign ft600_be1  = 1'b0;
+
+    // 4a. Reset synchronizer in ft600_clk domain
+    reg [3:0] ft_rst_pipe = 4'hF;
+    always @(posedge ft600_clk) begin
+        ft_rst_pipe <= {ft_rst_pipe[2:0], 1'b0};
+    end
+    wire ft_rst_n = ~ft_rst_pipe[3];
+
+    // 4b. Write side (32 MHz): counter test pattern into FIFO
+    //     Writes incrementing 16-bit counter at 32 MHz through the async
+    //     FIFO to the FT600 at 100 MHz.  Verifies the full CDC path.
+    wire        fifo_full;
+    reg [15:0]  test_counter = 16'd0;
+    wire        fifo_wen = ~fifo_full;
+
+    // Use PLL 32 MHz (clk32M) so this test works without ADC board
+    reg [3:0] pll_rst_pipe = 4'hF;
+    always @(posedge clk32M) begin
+        pll_rst_pipe <= {pll_rst_pipe[2:0], ~pll_locked};
+    end
+    wire pll_rst_n = ~pll_rst_pipe[3];
+
+    always @(posedge clk32M) begin
+        if (!pll_rst_n)
+            test_counter <= 16'd0;
+        else if (fifo_wen)
+            test_counter <= test_counter + 1'b1;
+    end
+
+    wire [15:0] fifo_wdata = test_counter;
+
+    // 4c. Async FIFO: 32 MHz → 100 MHz, 16-bit, 1024 deep
+    wire        fifo_ren;
+    wire [15:0] fifo_rdata;
+    wire [15:0] fifo_rdata_next;
+    wire        fifo_empty;
+    wire        fifo_almost_empty;
+
+    async_fifo #(.W(16), .D(1024)) u_adc_fifo (
+        .wclk         (clk32M),
+        .wrst_n       (pll_rst_n),
+        .wen          (fifo_wen),
+        .wdata        (fifo_wdata),
+        .full         (fifo_full),
+        .rclk         (ft600_clk),
+        .rrst_n       (ft_rst_n),
+        .ren          (fifo_ren),
+        .rdata        (fifo_rdata),
+        .rdata_next   (fifo_rdata_next),
+        .empty        (fifo_empty),
+        .almost_empty (fifo_almost_empty)
+    );
+
+    // 4d. FT600 writer (100 MHz): drain FIFO into FT600
+    wire [15:0] ft_data_out;
+    wire        ft_data_oe;
+    wire [1:0]  ft_be;
+
+    ft600_writer u_ft600 (
+        .clk              (ft600_clk),
+        .rst_n            (ft_rst_n),
+        .txe_n            (ft600_txe_n),
+        .wr_n             (ft600_wr_n),
+        .rd_n             (ft600_rd_n),
+        .oe_n             (ft600_oe_n),
+        .be               (ft_be),
+        .data_out         (ft_data_out),
+        .data_oe          (ft_data_oe),
+        .fifo_ren         (fifo_ren),
+        .fifo_rdata       (fifo_rdata),
+        .fifo_rdata_next  (fifo_rdata_next),
+        .fifo_empty       (fifo_empty),
+        .fifo_almost_empty(fifo_almost_empty)
+    );
+
+    assign ft600_be0 = ft_be[0];
+    assign ft600_be1 = ft_be[1];
+    assign ft600_d   = ft_data_oe ? ft_data_out : 16'bz;
 
     // -------------------------------------------------------------------------
     // 5. Status LEDs
@@ -159,10 +231,7 @@ module top (
         cb_spi_latch,
         cb_spi_dinr,
         cb_spi_dinl,
-        ft600_clk,
-        ft600_txe_n,
-        ft600_rxf_n,
-        ft600_d
+        ft600_rxf_n
     };
 
     // -------------------------------------------------------------------------

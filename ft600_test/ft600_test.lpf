@@ -1,0 +1,77 @@
+# =============================================================================
+# ft600_test.lpf  —  Pin constraints for FT600 counter-streamer test
+# Board: Custom FPGA (LFE5U-25F-7BG256I, BGA256)
+# Only the FT600 interface, LEDs, and crystal clock are constrained.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Clock — 16 MHz crystal X1 (kept in design to avoid unconstrained-pin warning)
+# -----------------------------------------------------------------------------
+LOCATE COMP "clk_16m"       SITE "A7";
+IOBUF PORT  "clk_16m"       IO_TYPE=LVCMOS33;
+
+# -----------------------------------------------------------------------------
+# FT600 USB FIFO (U1) — 100 MHz synchronous FIFO interface
+# All PL-bank pins, 3.3 V
+# -----------------------------------------------------------------------------
+LOCATE COMP "ft600_clk"      SITE "G1";
+LOCATE COMP "ft600_txe_n"    SITE "C1";
+LOCATE COMP "ft600_rxf_n"    SITE "C2";
+LOCATE COMP "ft600_wr_n"     SITE "C3";
+LOCATE COMP "ft600_rd_n"     SITE "B1";
+LOCATE COMP "ft600_oe_n"     SITE "B2";
+LOCATE COMP "ft600_be0"      SITE "E3";
+LOCATE COMP "ft600_be1"      SITE "D3";
+
+LOCATE COMP "ft600_d[0]"     SITE "G5";
+LOCATE COMP "ft600_d[1]"     SITE "F1";
+LOCATE COMP "ft600_d[2]"     SITE "D1";
+LOCATE COMP "ft600_d[3]"     SITE "E1";
+LOCATE COMP "ft600_d[4]"     SITE "J4";
+LOCATE COMP "ft600_d[5]"     SITE "H4";
+LOCATE COMP "ft600_d[6]"     SITE "H3";
+LOCATE COMP "ft600_d[7]"     SITE "H2";
+LOCATE COMP "ft600_d[8]"     SITE "G3";
+LOCATE COMP "ft600_d[9]"     SITE "G4";
+LOCATE COMP "ft600_d[10]"    SITE "F4";
+LOCATE COMP "ft600_d[11]"    SITE "G2";
+LOCATE COMP "ft600_d[12]"    SITE "F5";
+LOCATE COMP "ft600_d[13]"    SITE "F3";
+LOCATE COMP "ft600_d[14]"    SITE "E2";
+LOCATE COMP "ft600_d[15]"    SITE "F2";
+
+IOBUF PORT "ft600_clk"       IO_TYPE=LVCMOS25;
+IOBUF PORT "ft600_txe_n"     IO_TYPE=LVCMOS25 PULLMODE=UP;
+IOBUF PORT "ft600_rxf_n"     IO_TYPE=LVCMOS25 PULLMODE=UP;
+IOBUF PORT "ft600_wr_n"      IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_rd_n"      IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_oe_n"      IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_be0"       IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_be1"       IO_TYPE=LVCMOS25 DRIVE=8;
+
+IOBUF PORT "ft600_d[0]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[1]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[2]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[3]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[4]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[5]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[6]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[7]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[8]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[9]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[10]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[11]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[12]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[13]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[14]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[15]"     IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+
+FREQUENCY PORT "ft600_clk"   100.0 MHZ;
+
+# -----------------------------------------------------------------------------
+# Status LEDs — common-cathode, drive HIGH = on
+# -----------------------------------------------------------------------------
+LOCATE COMP "led_power"      SITE "P16";
+LOCATE COMP "led_data"       SITE "M13";
+IOBUF PORT  "led_power"      IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT  "led_data"       IO_TYPE=LVCMOS33 DRIVE=4;
