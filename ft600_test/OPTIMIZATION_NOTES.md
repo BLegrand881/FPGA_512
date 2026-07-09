@@ -82,10 +82,12 @@ if (accepted)
 else if (~fifo_empty & ~txe_n)
     data_out <= fifo_rdata;  // safe: pointer is stable
 ```
-**Result:** ZERO errors in direct-counter mode. But throughput = 0.028 MB/s in
-earlier firmware (likely other bugs). Re-tested after USB path fixes: ~22 MB/s
-but **same duplicate errors** as approach #9 (~5–7 per 10 MB) when used with
-the async FIFO. The settle cycle does NOT fix the underlying CDC issue.
+**Result:** ZERO errors in direct-counter mode. Throughput = 0.028 MB/s — the
+settle cycle halves FIFO utilization AND interacts badly with the FT600's
+buffering, causing far worse throughput than expected. Re-tested with the async
+FIFO after USB path fixes: still very slow (~0.03 MB/s range), and **same
+duplicate errors** as approach #10 (~5–7 per 10 MB). The settle cycle does NOT
+fix the underlying CDC issue and kills throughput. Do not use.
 
 ### 9. Confirmed-accept with counter bypass (CURRENT — ft600_streamer.v, WORKING)
 ```verilog
