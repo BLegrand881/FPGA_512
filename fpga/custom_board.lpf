@@ -14,14 +14,23 @@
 
 # -----------------------------------------------------------------------------
 # Status LEDs — common-cathode to GND, anode via series resistor from FPGA
-#   D1 (P16, PR35A) — solid on when PLL locked ("FPGA alive")
-#   D2 (M13, PR35C) — blinks when decoded frames are flowing ("data active")
+#   D1 (P16, PR35A) — SPI done indicator
+#   D2 (M13, PR35C) — ADC data streaming in
+#   D3 (N14, PR35D) — USB data streaming out
 #   Drive HIGH = LED on, LOW = LED off
 # -----------------------------------------------------------------------------
-LOCATE COMP "led_power"      SITE "P16";
+LOCATE COMP "led_spi"        SITE "P16";
 LOCATE COMP "led_data"       SITE "M13";
-IOBUF PORT  "led_power"      IO_TYPE=LVCMOS33 DRIVE=4;
+LOCATE COMP "led_usb"        SITE "N14";
+IOBUF PORT  "led_spi"        IO_TYPE=LVCMOS33 DRIVE=4;
 IOBUF PORT  "led_data"       IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT  "led_usb"        IO_TYPE=LVCMOS33 DRIVE=4;
+
+# -----------------------------------------------------------------------------
+# Button — SW2 (N13, PR38A) — active-low user trigger
+# -----------------------------------------------------------------------------
+LOCATE COMP "btn_trigger"    SITE "N13";
+IOBUF PORT  "btn_trigger"    PULLMODE=UP IO_TYPE=LVCMOS33;
 
 # -----------------------------------------------------------------------------
 # Clock — 16 MHz crystal X1 on ball A7 (PT29A/PCLKT0_0, clock-capable)
@@ -79,25 +88,29 @@ IOBUF PORT "cb_stim_start"   IO_TYPE=LVCMOS15 DRIVE=4;
 IOBUF PORT "cb_stim_chb"     IO_TYPE=LVCMOS15 DRIVE=4;
 
 # -----------------------------------------------------------------------------
-# CN1 — spare inputs (PULLUP so floating pins don't oscillate)
+# CN1 — spare inputs (PULLDOWN to avoid floating)
 # -----------------------------------------------------------------------------
 LOCATE COMP "cb_chip_reset"  SITE "D14";
 LOCATE COMP "cb_ac_in"       SITE "D16";
 LOCATE COMP "cb_imp_test"    SITE "E15";
 LOCATE COMP "cb_fe_reset"    SITE "E16";
+
+IOBUF PORT "cb_chip_reset"   IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_ac_in"        IO_TYPE=LVCMOS15 PULLMODE=DOWN;
+IOBUF PORT "cb_imp_test"     IO_TYPE=LVCMOS15 PULLMODE=DOWN;
+IOBUF PORT "cb_fe_reset"     IO_TYPE=LVCMOS15 PULLMODE=DOWN;
+
+# CN1 — SPI outputs to ADC board (active after button trigger)
+# -----------------------------------------------------------------------------
 LOCATE COMP "cb_spi_clk"     SITE "E14";
 LOCATE COMP "cb_spi_latch"   SITE "F16";
 LOCATE COMP "cb_spi_dinr"    SITE "F14";
 LOCATE COMP "cb_spi_dinl"    SITE "F15";
 
-IOBUF PORT "cb_chip_reset"   IO_TYPE=LVCMOS15 PULLMODE=UP;
-IOBUF PORT "cb_ac_in"        IO_TYPE=LVCMOS15 PULLMODE=UP;
-IOBUF PORT "cb_imp_test"     IO_TYPE=LVCMOS15 PULLMODE=UP;
-IOBUF PORT "cb_fe_reset"     IO_TYPE=LVCMOS15 PULLMODE=UP;
-IOBUF PORT "cb_spi_clk"      IO_TYPE=LVCMOS15 PULLMODE=UP;
-IOBUF PORT "cb_spi_latch"    IO_TYPE=LVCMOS15 PULLMODE=UP;
-IOBUF PORT "cb_spi_dinr"     IO_TYPE=LVCMOS15 PULLMODE=UP;
-IOBUF PORT "cb_spi_dinl"     IO_TYPE=LVCMOS15 PULLMODE=UP;
+IOBUF PORT "cb_spi_clk"      IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_spi_latch"    IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_spi_dinr"     IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_spi_dinl"     IO_TYPE=LVCMOS15 DRIVE=4;
 
 # -----------------------------------------------------------------------------
 # J6 — framed serial output + bit clock

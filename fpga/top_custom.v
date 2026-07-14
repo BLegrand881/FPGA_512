@@ -54,14 +54,19 @@ module top (
     output wire        cb_stim_chb,
 
     // CN1 — spare inputs (anchored to prevent LPF errors)
-    input  wire        cb_chip_reset,
+    output wire        cb_chip_reset,
     input  wire        cb_ac_in,
     input  wire        cb_imp_test,
     input  wire        cb_fe_reset,
-    input  wire        cb_spi_clk,
-    input  wire        cb_spi_latch,
-    input  wire        cb_spi_dinr,
-    input  wire        cb_spi_dinl,
+
+    // CN1 — SPI outputs to ADC board
+    output wire        cb_spi_clk,
+    output wire        cb_spi_latch,
+    output wire        cb_spi_dinr,
+    output wire        cb_spi_dinl,
+
+    // Button trigger
+    input  wire        btn_trigger,  // N13 — active-low user button (SW2)
 
     // J6 — framed serial output (4 lanes + bit clock)
     output wire [3:0]  serial_out,   // lanes 0–3, MSB-first, 1 bit per clock
@@ -79,8 +84,9 @@ module top (
     inout  wire [15:0] ft600_d,      // FT600 16-bit bidirectional data bus
 
     // Status LEDs (common-cathode to GND, anode via series resistor from FPGA)
-    output wire        led_power,    // P16 → D1: solid on when PLL locked
-    output wire        led_data      // M13 → D2: blinks when data is flowing
+    output wire        led_spi,      // P16 → D1: SPI done indicator
+    output wire        led_data,     // M13 → D2: ADC data streaming in
+    output wire        led_usb       // N14 → D3: USB data streaming out
 );
 
     // -------------------------------------------------------------------------
@@ -105,7 +111,7 @@ module top (
     //                 frequency clock during the ~100 µs PLL acquisition time.
     //    serial_clk : cb_clk32mhz passthrough → J6 Pin 7 (bit-clock reference)
     // -------------------------------------------------------------------------
-    assign cb_clkh    = pll_locked ? clk32M : 1'b0;
+    assign cb_clkh    = clk_16m;  // 16 MHz to ADC board for bringup testing
     assign serial_clk = cb_clk32mhz;
 
     // -------------------------------------------------------------------------
@@ -117,52 +123,74 @@ module top (
     assign cb_stim_chb   = 1'b0;
 
     // -------------------------------------------------------------------------
-    // 4. FT600 USB FIFO — ADC data bridge
-    //    Packs 12-bit ADC words into 16-bit transfers via async FIFO
+    // 3b. ADC chip reset — pulse high on boot, then hold low
+    //     16 MHz × 2^20 ≈ 65 ms high pulse
+    // -------------------------------------------------------------------------
+    reg [20:0] reset_ctr = 21'd0;
+    wire reset_done = reset_ctr[20];
+    always @(posedge clk_16m)
+        if (!reset_done)
+            reset_ctr <= reset_ctr + 1'b1;
+    assign cb_chip_reset = ~reset_done;
+
+    // -------------------------------------------------------------------------
+    // 4. SPI trigger — button-press primes ADC board
+    //    4096 SPI clock cycles at 1 MHz, then latch pulse.
+    //    SPI pins: cb_spi_dinl(F15), cb_spi_dinr(F14), cb_spi_clk(E14), cb_spi_latch(F16)
+    // -------------------------------------------------------------------------
+    wire spi_done;
+
+    spi_trigger #(.CLK_DIVIDER(16)) u_spi (
+        .clk       (clk_16m),
+        .btn_n     (btn_trigger),
+        .spi_sig1  (cb_spi_dinl),
+        .spi_sig2  (cb_spi_dinr),
+        .spi_clk_o (cb_spi_clk),
+        .spi_latch (cb_spi_latch),
+        .done      (spi_done)
+    );
+
+    // -------------------------------------------------------------------------
+    // 5. FT600 USB FIFO — ADC data bridge
+    //    Packs serial lane data into 16-bit transfers via async FIFO
     //    (32 MHz write → 100 MHz read), then streams to FT600.
-    //    Word format: [3:0]=lane, [15:4]=ADC sample (12-bit)
     // -------------------------------------------------------------------------
 
-    // 4a. Reset synchronizer in ft600_clk domain
+    // 5a. Reset synchronizer in ft600_clk domain
     reg [3:0] ft_rst_pipe = 4'hF;
     always @(posedge ft600_clk) begin
         ft_rst_pipe <= {ft_rst_pipe[2:0], 1'b0};
     end
     wire ft_rst_n = ~ft_rst_pipe[3];
 
-    // 4b. Write side (32 MHz): counter test pattern into FIFO
-    //     Writes incrementing 16-bit counter at 32 MHz through the async
-    //     FIFO to the FT600 at 100 MHz.  Verifies the full CDC path.
+    // 5b. Write side (32 MHz): pack lane_framer serial bits into FIFO
+    //     Samples serial_out[3:0] each clock, packs 4 time-steps into
+    //     one 16-bit word, writes to FIFO every 4th clock.
+    //     Gated on spi_done so no garbage streams before ADC is primed.
     wire        fifo_full;
-    reg [15:0]  test_counter = 16'd0;
-    wire        fifo_wen = ~fifo_full;
+    wire        fifo_wen;
+    wire [15:0] fifo_wdata;
 
-    // Use PLL 32 MHz (clk32M) so this test works without ADC board
-    reg [3:0] pll_rst_pipe = 4'hF;
-    always @(posedge clk32M) begin
-        pll_rst_pipe <= {pll_rst_pipe[2:0], ~pll_locked};
-    end
-    wire pll_rst_n = ~pll_rst_pipe[3];
+    bit_packer u_packer (
+        .clk       (cb_clk32mhz),
+        .rst_n     (rst_n),
+        .enable    (1'b1),
+        .serial_in (serial_out),
+        .wen       (fifo_wen),
+        .wdata     (fifo_wdata),
+        .full      (fifo_full)
+    );
 
-    always @(posedge clk32M) begin
-        if (!pll_rst_n)
-            test_counter <= 16'd0;
-        else if (fifo_wen)
-            test_counter <= test_counter + 1'b1;
-    end
-
-    wire [15:0] fifo_wdata = test_counter;
-
-    // 4c. Async FIFO: 32 MHz → 100 MHz, 16-bit, 1024 deep
+    // 5c. Async FIFO: 32 MHz → 100 MHz, 16-bit, 1024 deep
     wire        fifo_ren;
     wire [15:0] fifo_rdata;
     wire [15:0] fifo_rdata_next;
     wire        fifo_empty;
     wire        fifo_almost_empty;
 
-    async_fifo #(.W(16), .D(1024)) u_adc_fifo (
-        .wclk         (clk32M),
-        .wrst_n       (pll_rst_n),
+    async_fifo #(.W(16), .D(4096)) u_adc_fifo (
+        .wclk         (cb_clk32mhz),
+        .wrst_n       (rst_n),
         .wen          (fifo_wen),
         .wdata        (fifo_wdata),
         .full         (fifo_full),
@@ -175,7 +203,7 @@ module top (
         .almost_empty (fifo_almost_empty)
     );
 
-    // 4d. FT600 writer (100 MHz): drain FIFO into FT600
+    // 5d. FT600 writer (100 MHz): drain FIFO into FT600
     wire [15:0] ft_data_out;
     wire        ft_data_oe;
     wire [1:0]  ft_be;
@@ -202,40 +230,44 @@ module top (
     assign ft600_d   = ft_data_oe ? ft_data_out : 16'bz;
 
     // -------------------------------------------------------------------------
-    // 5. Status LEDs
-    //    led_power : on whenever PLL is locked (solid = FPGA running)
-    //    led_data  : stretches any out_valid pulse to ~0.1 s so it's visible.
-    //                Driven in the cb_clk32mhz domain (ADC clock).
-    //                Stretch counter: 32 MHz × 2^22 ≈ 131 ms per blink.
+    // 6. Status LEDs
+    //    D1 (led_spi)  : ON when SPI trigger has completed (ADC board primed)
+    //    D2 (led_data) : blinks when ADC data is flowing (out_valid activity)
+    //    D3 (led_usb)  : ON when USB data is being written (~ft600_wr_n)
     // -------------------------------------------------------------------------
-    assign led_power = pll_locked;
+    assign led_spi = spi_done;
 
     reg [21:0] data_stretch = 22'd0;
     always @(posedge cb_clk32mhz) begin
         if (|out_valid)
-            data_stretch <= 22'h3FFFFF;   // reload to full count on any valid word
+            data_stretch <= 22'h3FFFFF;
         else if (data_stretch != 0)
             data_stretch <= data_stretch - 1'b1;
     end
     assign led_data = (data_stretch != 0);
 
+    // USB activity: stretch ~wr_n pulses to visible blinks
+    reg [21:0] usb_stretch = 22'd0;
+    always @(posedge ft600_clk) begin
+        if (~ft600_wr_n)
+            usb_stretch <= 22'h3FFFFF;
+        else if (usb_stretch != 0)
+            usb_stretch <= usb_stretch - 1'b1;
+    end
+    assign led_usb = (usb_stretch != 0);
+
     // -------------------------------------------------------------------------
-    // 6. Unused input anchor — keeps IO buffers in netlist for PULLMODE in LPF
+    // 7. Unused input anchor — keeps IO buffers in netlist for PULLMODE in LPF
     // -------------------------------------------------------------------------
     wire _unused_ok = &{1'b0,
-        cb_chip_reset,
         cb_ac_in,
         cb_imp_test,
         cb_fe_reset,
-        cb_spi_clk,
-        cb_spi_latch,
-        cb_spi_dinr,
-        cb_spi_dinl,
         ft600_rxf_n
     };
 
     // -------------------------------------------------------------------------
-    // 7. Reset — synchronous de-assertion in cb_clk32mhz domain
+    // 8. Reset — synchronous de-assertion in cb_clk32mhz domain
     //    rst_pipe shifts in 0s only after pll_locked is asserted, so the
     //    decoder stays in reset until:
     //      (a) PLL has locked (cb_clkh is stable 32 MHz to ADC board), AND
@@ -249,7 +281,7 @@ module top (
     wire rst_n = ~rst_pipe[3];
 
     // -------------------------------------------------------------------------
-    // 8. RX — 8-channel ADC deserializer → 8:4 TDM mux
+    // 9. RX — 8-channel ADC deserializer → 8:4 TDM mux
     //
     //    cb_d[k] maps directly to decoder channel k-1 (data_in[k-1]).
     //    cb_read  → next_amps (group-boundary reset, broadcast to all 8 ch)
@@ -284,7 +316,7 @@ module top (
     wire _chsel_unused = &{1'b0, out_chsel};
 
     // -------------------------------------------------------------------------
-    // 9. Lane framers — 4 independent MSB-first serial output streams
+    // 10. Lane framers — 4 independent MSB-first serial output streams
     //
     //    Frame format per lane (132 words × 12 bits = 1584 bit-clock cycles):
     //      [SYNC(12b)][LANE_ID(12b)][CYCLE_CNT(12b)][DATA×128][CRC-12(12b)]

@@ -165,12 +165,29 @@ to adjacent addresses, a corrupted read could yield the previous word
 - Errors are always duplicates (off by -1), never skips or random corruption
 
 **Path forward:**
-1. Use ECP5 block RAM (DP16KD) with true dual-port synchronous reads
-   instead of LUT-based distributed RAM with async reads. Block RAM
-   naturally registers outputs, eliminating the CDC read hazard.
-2. Or: Add a registered read stage on the rclk side of the FIFO — read
-   `mem[rptr]` into a register on rclk, then drive data_out from the
-   register. This adds 1 cycle of latency but eliminates async reads
-   across clock domains.
-3. Or: Use a vendor-provided FIFO primitive (e.g., ECP5 FIFO16DC) that
+1. Use a vendor-provided FIFO primitive (e.g., ECP5 FIFO16DC) that
    handles CDC internally with proper synchronization.
+
+**Approaches ruled out:**
+- Block RAM (DP16KD) or registered read stage: both require synchronous
+  reads, which add 1 cycle of read latency. This forces a settle cycle
+  after every accepted write (WR_N must go high for 1 clock while the
+  new data propagates). The FT600 flushes a short USB packet every time
+  WR_N goes high, even for 1 cycle — this destroys throughput completely
+  (0.028 MB/s measured, vs 35 MB/s with combinational reads).
+
+## Integrated System Results (2026-07-14)
+
+Full ADC pipeline running: ADC board → rx_process_mux → lane_framer →
+bit_packer (4 serial bits × 4 time-steps = 16-bit word) → async_fifo
+(16 MHz write → 100 MHz read) → ft600_writer → USB → host decode.
+
+- **Throughput:** 8 MB/s (16 MHz clock / 4 = 4 MW/s × 2 bytes)
+- **Frames decoded:** 815 per lane per 1 MB capture
+- **CRC errors:** 9–38 per 1 MB across 3 trials (variable)
+- **Error amplification:** each CDC glitch corrupts a 16-bit packed word
+  containing 16 serial bits across all 4 lanes. One FIFO glitch can
+  cause up to 4 CRC failures (one per lane per affected frame).
+- **Estimated CDC events:** 2–10 per MB, worse than the counter test
+  (~0.5/MB) because the FIFO is mostly empty at 4 MW/s write rate,
+  keeping rptr close to wptr and increasing read-write collision odds.
