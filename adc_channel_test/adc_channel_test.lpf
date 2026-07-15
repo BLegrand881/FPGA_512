@@ -1,0 +1,133 @@
+# =============================================================================
+# adc_channel_test.lpf — Single-channel ADC bringup test
+# LFE5U-25F-7BG256I (BGA256)
+# =============================================================================
+
+# Crystal — 16 MHz
+LOCATE COMP "clk_16m"        SITE "A7";
+IOBUF PORT  "clk_16m"        IO_TYPE=LVCMOS33;
+FREQUENCY PORT "clk_16m"     16.0 MHZ;
+
+# LEDs
+LOCATE COMP "led_spi"        SITE "P16";
+LOCATE COMP "led_data"       SITE "M13";
+LOCATE COMP "led_usb"        SITE "N14";
+IOBUF PORT  "led_spi"        IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT  "led_data"       IO_TYPE=LVCMOS33 DRIVE=4;
+IOBUF PORT  "led_usb"        IO_TYPE=LVCMOS33 DRIVE=4;
+
+# Button
+LOCATE COMP "btn_trigger"    SITE "N13";
+IOBUF PORT  "btn_trigger"    PULLMODE=UP IO_TYPE=LVCMOS33;
+
+# ADC data channels (all 8 constrained, only CHANNEL_SEL used)
+LOCATE COMP "cb_d[1]"        SITE "B15";
+LOCATE COMP "cb_d[2]"        SITE "B16";
+LOCATE COMP "cb_d[3]"        SITE "C15";
+LOCATE COMP "cb_d[4]"        SITE "C16";
+LOCATE COMP "cb_d[5]"        SITE "J15";
+LOCATE COMP "cb_d[6]"        SITE "K15";
+LOCATE COMP "cb_d[7]"        SITE "K14";
+LOCATE COMP "cb_d[8]"        SITE "J14";
+IOBUF PORT "cb_d[1]"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[2]"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[3]"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[4]"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[5]"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[6]"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[7]"         IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_d[8]"         IO_TYPE=LVCMOS15;
+
+# ADC clocks and control
+LOCATE COMP "cb_clk32mhz"    SITE "K16";
+LOCATE COMP "cb_read"        SITE "J13";
+LOCATE COMP "cb_sync"        SITE "H14";
+LOCATE COMP "cb_clkh"        SITE "J16";
+IOBUF PORT "cb_clk32mhz"     IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_read"          IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_sync"          IO_TYPE=LVCMOS15;
+IOBUF PORT "cb_clkh"          IO_TYPE=LVCMOS15 DRIVE=8;
+FREQUENCY PORT "cb_clk32mhz"  32.0 MHZ;
+
+# ADC control outputs
+LOCATE COMP "cb_chip_reset"   SITE "D14";
+LOCATE COMP "cb_fe_reset"     SITE "E16";
+IOBUF PORT "cb_chip_reset"    IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_fe_reset"      IO_TYPE=LVCMOS15 DRIVE=4;
+
+# Spare inputs
+LOCATE COMP "cb_ac_in"        SITE "D16";
+LOCATE COMP "cb_imp_test"     SITE "E15";
+IOBUF PORT "cb_ac_in"         IO_TYPE=LVCMOS15 PULLMODE=DOWN;
+IOBUF PORT "cb_imp_test"      IO_TYPE=LVCMOS15 PULLMODE=DOWN;
+
+# Stimulation outputs (held low)
+LOCATE COMP "cb_stim_en"      SITE "G14";
+LOCATE COMP "cb_stim_clk"     SITE "G15";
+LOCATE COMP "cb_stim_start"   SITE "G16";
+LOCATE COMP "cb_stim_chb"     SITE "H15";
+IOBUF PORT "cb_stim_en"       IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_stim_clk"      IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_stim_start"    IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_stim_chb"      IO_TYPE=LVCMOS15 DRIVE=4;
+
+# SPI outputs
+LOCATE COMP "cb_spi_clk"      SITE "E14";
+LOCATE COMP "cb_spi_latch"    SITE "F16";
+LOCATE COMP "cb_spi_dinr"     SITE "F14";
+LOCATE COMP "cb_spi_dinl"     SITE "F15";
+IOBUF PORT "cb_spi_clk"       IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_spi_latch"     IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_spi_dinr"      IO_TYPE=LVCMOS15 DRIVE=4;
+IOBUF PORT "cb_spi_dinl"      IO_TYPE=LVCMOS15 DRIVE=4;
+
+# FT600 USB FIFO (LVCMOS25)
+LOCATE COMP "ft600_clk"       SITE "G1";
+LOCATE COMP "ft600_txe_n"     SITE "C1";
+LOCATE COMP "ft600_rxf_n"     SITE "C2";
+LOCATE COMP "ft600_wr_n"      SITE "C3";
+LOCATE COMP "ft600_rd_n"      SITE "B1";
+LOCATE COMP "ft600_oe_n"      SITE "B2";
+LOCATE COMP "ft600_be0"       SITE "E3";
+LOCATE COMP "ft600_be1"       SITE "D3";
+LOCATE COMP "ft600_d[0]"      SITE "G5";
+LOCATE COMP "ft600_d[1]"      SITE "F1";
+LOCATE COMP "ft600_d[2]"      SITE "D1";
+LOCATE COMP "ft600_d[3]"      SITE "E1";
+LOCATE COMP "ft600_d[4]"      SITE "J4";
+LOCATE COMP "ft600_d[5]"      SITE "H4";
+LOCATE COMP "ft600_d[6]"      SITE "H3";
+LOCATE COMP "ft600_d[7]"      SITE "H2";
+LOCATE COMP "ft600_d[8]"      SITE "G3";
+LOCATE COMP "ft600_d[9]"      SITE "G4";
+LOCATE COMP "ft600_d[10]"     SITE "F4";
+LOCATE COMP "ft600_d[11]"     SITE "G2";
+LOCATE COMP "ft600_d[12]"     SITE "F5";
+LOCATE COMP "ft600_d[13]"     SITE "F3";
+LOCATE COMP "ft600_d[14]"     SITE "E2";
+LOCATE COMP "ft600_d[15]"     SITE "F2";
+IOBUF PORT "ft600_clk"        IO_TYPE=LVCMOS25;
+IOBUF PORT "ft600_txe_n"      IO_TYPE=LVCMOS25 PULLMODE=UP;
+IOBUF PORT "ft600_rxf_n"      IO_TYPE=LVCMOS25 PULLMODE=UP;
+IOBUF PORT "ft600_wr_n"       IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_rd_n"       IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_oe_n"       IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_be0"        IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_be1"        IO_TYPE=LVCMOS25 DRIVE=8;
+IOBUF PORT "ft600_d[0]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[1]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[2]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[3]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[4]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[5]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[6]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[7]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[8]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[9]"       IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[10]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[11]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[12]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[13]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[14]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+IOBUF PORT "ft600_d[15]"      IO_TYPE=LVCMOS25 DRIVE=8 PULLMODE=UP;
+FREQUENCY PORT "ft600_clk"    100.0 MHZ;
